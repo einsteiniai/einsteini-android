@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Theme applied to the Android Window while the process is starting when the OS's Dark Mode setting is on -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <!-- Show a splash screen on the activity, this is only visible in the app's launcher screen. -->
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">false</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+
+    <!-- Theme applied to the Android Window as soon as the process has started, this is the theme for the Flutter UI. -->
+    <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">?android:colorBackground</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">false</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+    
+    <!-- Einsteini custom theme for overlay UI - Dark Mode -->
+    <style name="EinsteiniOverlayTheme" parent="@android:style/Theme.Material">
+        <item name="android:colorPrimary">@color/darkColorPrimary</item>
+        <item name="android:colorPrimaryDark">@color/darkColorPrimary</item>
+        <item name="android:colorAccent">@color/colorAccent</item>
+        <item name="android:colorBackground">@color/darkColorBackground</item>
+        <item name="android:colorBackgroundFloating">@color/darkColorSurface</item>
+        <item name="android:textColorPrimary">@color/darkTextColorPrimary</item>
+        <item name="android:textColorSecondary">@color/darkTextColorSecondary</item>
+        <item name="android:textColorPrimaryInverse">@android:color/white</item>
+        <item name="android:textColorSecondaryInverse">#CCFFFFFF</item>
+        <item name="android:colorControlHighlight">@color/darkColorBorder</item>
+    </style>
+</resources>

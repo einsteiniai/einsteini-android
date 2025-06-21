@@ -1,0 +1,411 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/overlay_rounded_background">
+
+    <!-- Drag handle at the very top for resizing -->
+    <RelativeLayout
+        android:id="@+id/resizeHandle"
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:padding="12dp">
+
+        <View
+            android:layout_width="64dp"
+            android:layout_height="4dp"
+            android:layout_centerInParent="true"
+            android:background="#505050"
+            android:elevation="2dp" />
+    </RelativeLayout>
+
+    <!-- Header with tabs -->
+    <LinearLayout
+        android:id="@+id/tabLayout"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="#121827">
+
+        <TextView
+            android:id="@+id/tab1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Summarize"
+            android:textColor="#BD79FF"
+            android:textSize="16sp"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:id="@+id/tab2"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Translate"
+            android:textColor="#B4B7BD"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif" />
+
+        <TextView
+            android:id="@+id/tab3"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Comment"
+            android:textColor="#B4B7BD"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif" />
+    </LinearLayout>
+
+    <View
+        android:id="@+id/divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#1A2235" />
+
+    <!-- Content area with ScrollView -->
+    <ScrollView
+        android:id="@+id/contentScrollView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:scrollbars="vertical">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <!-- Summarize content -->
+            <LinearLayout
+                android:id="@+id/contentViewLinkedIn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp"
+                    android:layout_margin="0dp"
+                    android:background="#1A2235">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Summary"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#BD79FF"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="This article discusses how AI can improve workplace productivity through automated task management and intelligent data processing."
+                        android:textColor="#FFFFFF"
+                        android:fontFamily="sans-serif" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp"
+                    android:layout_margin="0dp"
+                    android:layout_marginTop="16dp"
+                    android:background="#1A2235">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Key Points"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#BD79FF"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="• AI significantly reduces time spent on repetitive tasks\n• Smart assistants can prioritize information and notifications\n• Integration with existing tools enhances workflow efficiency"
+                        android:textColor="#FFFFFF"
+                        android:fontFamily="sans-serif" />
+                </LinearLayout>
+                
+                <!-- Additional content for scroll testing -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp"
+                    android:layout_margin="0dp"
+                    android:layout_marginTop="16dp"
+                    android:background="#1A2235">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Implementation"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#BD79FF"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="• Start with small, focused AI implementations\n• Prioritize areas where automation can save the most time\n• Ensure proper training and onboarding for team members\n• Measure outcomes and adjust implementations as needed\n• Consider privacy and security implications"
+                        android:textColor="#FFFFFF"
+                        android:fontFamily="sans-serif" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp"
+                    android:layout_margin="0dp"
+                    android:layout_marginTop="16dp"
+                    android:background="#1A2235">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Results"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#BD79FF"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Companies implementing these AI strategies have reported a 32% increase in productivity and 28% reduction in time spent on administrative tasks. Employee satisfaction scores also improved by an average of 24% following successful AI integration."
+                        android:textColor="#FFFFFF"
+                        android:fontFamily="sans-serif" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Translate content -->
+            <LinearLayout
+                android:id="@+id/contentViewTwitter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp"
+                    android:layout_margin="0dp"
+                    android:background="#1A2235">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Translation"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#BD79FF"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Here is the translated content from the original post."
+                        android:textColor="#FFFFFF"
+                        android:fontFamily="sans-serif" />
+                </LinearLayout>
+                
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp"
+                    android:layout_margin="0dp"
+                    android:layout_marginTop="16dp"
+                    android:background="#1A2235">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Original (Spanish)"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#BD79FF"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="La inteligencia artificial está transformando la forma en que trabajamos e interactuamos con la tecnología en nuestra vida cotidiana."
+                        android:textColor="#FFFFFF"
+                        android:fontFamily="sans-serif" />
+                </LinearLayout>
+                
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp"
+                    android:layout_margin="0dp"
+                    android:layout_marginTop="16dp"
+                    android:background="#1A2235">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Translation (English)"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#BD79FF"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Artificial intelligence is transforming the way we work and interact with technology in our daily lives."
+                        android:textColor="#FFFFFF"
+                        android:fontFamily="sans-serif" />
+                </LinearLayout>
+            </LinearLayout>
+            
+            <!-- Comment content -->
+            <LinearLayout
+                android:id="@+id/contentViewComment"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp"
+                    android:layout_margin="0dp"
+                    android:background="#1A2235">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Comment Ideas"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#BD79FF"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Here are some suggested comments you could post in response to this content."
+                        android:textColor="#FFFFFF"
+                        android:fontFamily="sans-serif" />
+                </LinearLayout>
+                
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp"
+                    android:layout_margin="0dp"
+                    android:layout_marginTop="16dp"
+                    android:background="#1A2235">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Professional"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#BD79FF"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Thank you for sharing these insights! I've been exploring similar AI implementation strategies at my organization and have seen comparable productivity gains."
+                        android:textColor="#FFFFFF"
+                        android:fontFamily="sans-serif" />
+                </LinearLayout>
+                
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp"
+                    android:layout_margin="0dp"
+                    android:layout_marginTop="16dp"
+                    android:background="#1A2235">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Question"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#BD79FF"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="This is very interesting! Could you share more about specific AI tools your team has found most effective for workflow automation?"
+                        android:textColor="#FFFFFF"
+                        android:fontFamily="sans-serif" />
+                </LinearLayout>
+                
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp"
+                    android:layout_margin="0dp"
+                    android:layout_marginTop="16dp"
+                    android:background="#1A2235">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Thoughtful"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#BD79FF"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="While the productivity gains are impressive, it's also important to consider how we can use AI to improve work-life balance rather than just increasing output. The employee satisfaction metrics you mentioned are encouraging in that regard."
+                        android:textColor="#FFFFFF"
+                        android:fontFamily="sans-serif" />
+                </LinearLayout>
+            </LinearLayout>
+        </FrameLayout>
+    </ScrollView>
+</LinearLayout>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">einsteini.ai</string>
+    <string name="app_tagline">Effortlessly human.</string>
+    <string name="accessibility_service_description">einsteini.ai needs accessibility permission to help you create engaging LinkedIn content. effortlessly human.</string>
+</resources> 
