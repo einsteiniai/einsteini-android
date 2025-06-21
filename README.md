@@ -1,101 +1,106 @@
 # einsteini.ai Mobile App
 
-A Flutter application for einsteini.ai, an AI assistant that helps users learn, create, and accomplish more throughout their day.
+A Flutter application that provides AI-assisted LinkedIn engagement tools through both in-app and overlay interfaces.
 
-## Features
+## Core Functionality
 
-- **Onboarding Experience**: Smooth introduction with permissions setup and theme selection
-- **Authentication**: Login and signup functionality with social logins
-- **AI Assistant**: Chat interface with contextual understanding
-- **Accessibility Support**: Works with device accessibility services
-- **Overlay Capability**: Provides assistance across different apps
-- **Responsive Design**: Works on both iOS and Android in light and dark mode
+- **LinkedIn Content Analysis**: Scrapes and analyzes LinkedIn posts to provide summaries and insights
+- **AI Content Generation**: Creates LinkedIn posts and "About Me" sections based on user input  
+- **Floating Overlay**: Provides quick access to AI features across different apps on Android
+- **System Integration**: Uses Android services (Accessibility and Overlay) to enhance integration
+
+## Technical Architecture
+
+### Mobile App (Flutter)
+
+The app is built with Flutter and organized using a feature-based architecture:
+
+```
+lib/
+├── core/
+│   ├── constants/       # App-wide constants and configuration
+│   ├── routes/          # Navigation and routing with go_router
+│   ├── services/        # Core services (overlay, history)
+│   ├── theme/           # App theme definitions and switching
+│   ├── utils/           # Platform interactions and utilities
+│   └── widgets/         # Reusable UI components
+├── features/
+│   ├── home/            # Main screen with tabs for different features
+│   │   ├── providers/
+│   │   ├── screens/
+│   │   └── widgets/
+│   └── onboarding/      # Permission setup and initial experience
+│       ├── screens/
+│       └── widgets/
+└── main.dart            # App entry point
+```
+
+### Android Native Components
+
+The app includes two key Android services:
+
+1. **EinsteiniAccessibilityService**: Provides screen context awareness
+2. **EinsteiniOverlayService**: Delivers a floating bubble UI with AI assistance features
+
+Communication between Flutter and native Android code happens through platform channels.
+
+## Key Features
+
+### LinkedIn Post Analyzer
+- Scrapes post content, author, date, likes, comments
+- Generates summaries and translations
+- Saves analysis history
+
+### Content Creation Assistant
+- Creates professional LinkedIn posts
+- Generates "About Me" sections for profiles
+- Customizes content based on topic, tone, and length
+
+### Floating Overlay (Android only)
+- Provides a bubble interface that works across apps
+- Expandable UI with AI assistance
+- Theme adapts based on system dark/light mode
 
 ## Getting Started
 
 ### Prerequisites
 
 - Flutter 3.6 or higher
-- Dart 3.0 or higher
-- Android Studio / Visual Studio Code with Flutter extensions
-- iOS Simulator or Android Emulator
+- Dart 3.6 or higher
+- Android Studio / Visual Studio Code
 
-### Required Fonts
-
-The app uses the following custom fonts:
-
-1. **Space Grotesk**
-   - Regular, Light, Medium, Bold
-
-2. **Inter**
-   - Regular, Light, Medium, Bold
-
-Please download these fonts and place them in the `assets/fonts/` directory.
-
-### Installation
+### Development Setup
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/einsteini_app.git
-   cd einsteini_app
+   git clone https://github.com/your-username/einsteiniapp.git
+   cd einsteiniapp
    ```
 
-2. Get dependencies:
+2. Install dependencies:
    ```bash
    flutter pub get
    ```
 
-3. Create necessary asset folders if not already present:
-   ```bash
-   mkdir -p assets/animations
-   mkdir -p assets/images
-   mkdir -p assets/icons
-   mkdir -p assets/fonts
-   ```
-
-4. Place required font files in the assets/fonts directory.
-
-5. Run the app:
+3. Run the app:
    ```bash
    flutter run
    ```
 
-## Project Structure
+## Required Permissions
 
-```
-lib/
-├── core/
-│   ├── constants/       # App-wide constants
-│   ├── routes/          # Navigation and routing
-│   ├── theme/           # App theme definitions
-│   ├── utils/           # Utility functions
-│   └── widgets/         # Reusable widgets
-├── features/
-│   ├── home/            # Main screen and chat functionality
-│   │   ├── providers/
-│   │   ├── screens/
-│   │   └── widgets/
-│   └── onboarding/      # Onboarding experience
-│       ├── screens/
-│       └── widgets/
-└── main.dart            # App entry point
-```
+The app needs the following permissions on Android:
+- **SYSTEM_ALERT_WINDOW**: To display overlay UI on top of other apps
+- **BIND_ACCESSIBILITY_SERVICE**: To provide context-aware assistance
 
-## Permissions
+## Dependencies
 
-The app requires the following permissions:
-
-- **Display over other apps**: To provide AI assistance across different applications
-- **Accessibility services**: To understand screen context and provide relevant assistance
-
-These permissions are requested during the onboarding process but can be skipped and configured later in the app settings.
-
-## Development Notes
-
-- The app uses Riverpod for state management
-- Go Router for navigation
-- Shared Preferences for local storage
-- The app supports both light and dark modes
+Key packages used in this project:
+- **flutter_riverpod**: State management
+- **go_router**: Navigation
+- **shared_preferences**: Local storage
+- **lottie**: Animation support
+- **permission_handler**: Permission management
 
 ## License
 
