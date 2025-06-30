@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<font-family xmlns:app="http://schemas.android.com/apk/res-auto">
+    <!-- Regular -->
+    <font
+        app:fontStyle="normal"
+        app:fontWeight="400"
+        app:font="@font/inter_18pt_regular" />
+    
+    <!-- Medium -->
+    <font
+        app:fontStyle="normal"
+        app:fontWeight="500"
+        app:font="@font/inter_18pt_medium" />
+    
+    <!-- Bold -->
+    <font
+        app:fontStyle="normal"
+        app:fontWeight="700"
+        app:font="@font/inter_18pt_bold" />
+        
+    <!-- Light -->
+    <font
+        app:fontStyle="normal"
+        app:fontWeight="300"
+        app:font="@font/inter_18pt_light" />
+        
+    <!-- SemiBold -->
+    <font
+        app:fontStyle="normal"
+        app:fontWeight="600"
+        app:font="@font/inter_18pt_semibold" />
+        
+    <!-- ExtraBold -->
+    <font
+        app:fontStyle="normal"
+        app:fontWeight="800"
+        app:font="@font/inter_18pt_extrabold" />
+        
+    <!-- Black -->
+    <font
+        app:fontStyle="normal"
+        app:fontWeight="900"
+        app:font="@font/inter_18pt_black" />
+        
+    <!-- ExtraLight -->
+    <font
+        app:fontStyle="normal"
+        app:fontWeight="200"
+        app:font="@font/inter_18pt_extralight" />
+        
+    <!-- Thin -->
+    <font
+        app:fontStyle="normal"
+        app:fontWeight="100"
+        app:font="@font/inter_18pt_thin" />
+
+    <!-- Italic variants -->
+    <font
+        app:fontStyle="italic"
+        app:fontWeight="400"
+        app:font="@font/inter_18pt_italic" />
+        
+    <font
+        app:fontStyle="italic"
+        app:fontWeight="500"
+        app:font="@font/inter_18pt_mediumitalic" />
+        
+    <font
+        app:fontStyle="italic"
+        app:fontWeight="700"
+        app:font="@font/inter_18pt_bolditalic" />
+</font-family> 

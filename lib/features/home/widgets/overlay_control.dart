@@ -18,27 +18,22 @@ class OverlayControlState extends State<OverlayControl> {
   @override
   void initState() {
     super.initState();
-    _checkOverlayStatus();
-
-    // Listen to overlay events
-    _overlayService.onOverlayExpanded.listen((_) {
-      ToastUtils.showToast('Overlay expanded');
-    });
-
-    _overlayService.onOverlayCollapsed.listen((_) {
-      ToastUtils.showToast('Overlay collapsed');
-    });
+    // Make sure overlay is initially disabled - force it to false
+    _forceStopOverlay();
   }
 
-  Future<void> _checkOverlayStatus() async {
+  // Force stop overlay and ensure state is OFF
+  Future<void> _forceStopOverlay() async {
     setState(() {
       _isLoading = true;
+      // Force the toggle to be OFF visually immediately
+      _isOverlayActive = false;
     });
-
-    final isRunning = await _overlayService.isOverlayServiceRunning();
+    
+    // Stop overlay service on widget initialization to ensure it's off by default
+    await _overlayService.stopOverlayService();
     
     setState(() {
-      _isOverlayActive = isRunning;
       _isLoading = false;
     });
   }
@@ -74,7 +69,12 @@ class OverlayControlState extends State<OverlayControl> {
         ToastUtils.showToast('Failed to stop overlay');
       }
     } else {
-      success = await _overlayService.startOverlayService();
+      // Get the current theme mode
+      final brightness = MediaQuery.of(context).platformBrightness;
+      final isDarkMode = Theme.of(context).brightness == Brightness.dark || 
+          brightness == Brightness.dark;
+      
+      success = await _overlayService.startOverlayService(isDarkMode: isDarkMode);
       if (success) {
         ToastUtils.showToast('Overlay started');
       } else {
@@ -95,38 +95,43 @@ class OverlayControlState extends State<OverlayControl> {
   
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.all(16.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Floating Overlay',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Card(
+          margin: const EdgeInsets.all(16.0),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Floating Overlay',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Enable a floating button that expands into a window when clicked.',
+                ),
+                const SizedBox(height: 16),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Enable Floating Overlay'),
+                  value: _isOverlayActive,
+                  onChanged: _isLoading ? null : (_) => _toggleOverlayService(),
+                ),
+                if (_isLoading)
+                  const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+              ],
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Enable a floating button that expands into a window when clicked.',
-            ),
-            const SizedBox(height: 16),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Enable Floating Overlay'),
-              value: _isOverlayActive,
-              onChanged: _isLoading ? null : (_) => _toggleOverlayService(),
-            ),
-            if (_isLoading)
-              const Center(
-                child: CircularProgressIndicator(),
-              ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 } 

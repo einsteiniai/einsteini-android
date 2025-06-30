@@ -19,4 +19,15 @@
     <color name="darkTextColorPrimary">#E0E0E0</color>
     <color name="darkTextColorSecondary">#ABABAB</color>
     <color name="darkColorBorder">#3D3D3D</color>
+    
+    <!-- Overlay colors -->
+    <color name="overlay_background_dark">#121827</color>
+    <color name="overlay_background_light">#FFFFFF</color>
+    <color name="text_color_dark">#FFFFFF</color>
+    <color name="text_color_light">#212121</color>
+    
+    <!-- Tab colors -->
+    <color name="purple_accent">#BD79FF</color>
+    <color name="inactive_tab_dark">#B4B7BD</color>
+    <color name="inactive_tab_light">#757575</color>
 </resources>

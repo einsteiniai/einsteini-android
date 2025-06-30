@@ -1,6 +1,80 @@
-# einsteini.ai Mobile App
+# Einsteini - AI Assistant Mobile App
 
-A Flutter application that provides AI-assisted LinkedIn engagement tools through both in-app and overlay interfaces.
+Einsteini is an AI-powered assistant app that enhances your productivity by providing smart content generation features across different platforms.
+
+## LinkedIn AI Features
+
+The Einsteini app now includes powerful LinkedIn AI assistant features that work directly with the LinkedIn Android app:
+
+### Features
+
+1. **AI Comment Generation**
+   - Generate contextually relevant comments for LinkedIn posts
+   - Multiple comment types: Agree, Expand, Fun, Question, Perspective, and more
+   - Personalize comments with custom tone and instructions
+   - AI grammar correction for your comments
+
+2. **LinkedIn Post Creation**
+   - Create engaging LinkedIn posts using proven frameworks:
+     - AIDA (Attention, Interest, Desire, Action)
+     - HAS (Hook, Amplify, Story)
+     - FAB (Features, Advantages, Benefits)
+     - STAR (Situation, Task, Action, Result)
+   - Control hashtag and emoji inclusion
+   - Personalize with different tones and custom instructions
+
+3. **About Section Optimization**
+   - Enhance your LinkedIn About section
+   - Options to optimize, expand, simplify, or highlight keywords
+   - Custom personalization with specific writing styles
+
+4. **Connection Note Generator**
+   - Create personalized connection request notes
+   - Choose formal, friendly, or specific styles
+   - Include mutual connections and personalized details
+
+5. **Content Translation**
+   - Translate LinkedIn content into multiple languages
+   - Support for 13 languages including English, Spanish, French, German, etc.
+
+### How It Works
+
+1. **Floating Overlay**
+   - Enable the overlay feature in the app settings
+   - A floating bubble will appear on your screen
+   - Tap the bubble to expand the AI assistant overlay
+
+2. **Accessibility Service**
+   - The app uses Android's accessibility service to detect LinkedIn content
+   - Content is securely processed without storing your LinkedIn data
+
+3. **AI Processing**
+   - Content is analyzed by our advanced AI models
+   - Generated content is displayed in the overlay
+   - Easily copy and paste into LinkedIn
+
+### Setup
+
+1. Install the app and grant required permissions
+2. Enable accessibility service for LinkedIn content detection
+3. Enable overlay permission for the floating assistant
+4. Open LinkedIn app and navigate to posts, profiles, etc.
+5. Use the floating bubble to access AI features
+
+## Technical Details
+
+The app is built using Flutter for the cross-platform UI, with native Android components for the overlay and accessibility services. The AI functionality connects to our secure backend API for content generation.
+
+### Key Components
+
+- **LinkedInService**: Handles LinkedIn API operations and content generation
+- **OverlayService**: Manages the floating overlay window
+- **EinsteiniAccessibilityService**: Detects LinkedIn content in the Android app
+- **LinkedInOverlayControls**: UI components for the LinkedIn AI features
+
+## Privacy
+
+The app processes LinkedIn content locally and only sends the necessary data to our secure API for AI content generation. No user credentials or personal LinkedIn data are stored.
 
 ## Core Functionality
 

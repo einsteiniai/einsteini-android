@@ -87,8 +87,38 @@ class _OverlayPermissionScreenState extends State<OverlayPermissionScreen> {
   }
 
   void _requestPermission() async {
-    await PlatformChannel.openOverlayPermissionSettings();
-    // Permission checking will continue with the timer
+    // Show loading indicator
+    setState(() {
+      _isChecking = true;
+    });
+    
+    try {
+      // Open settings
+      await PlatformChannel.openOverlayPermissionSettings();
+      
+      // Short delay to ensure settings screen has time to open
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      // Show instruction dialog to help users navigate to the correct settings
+      if (mounted) {
+        PermissionUtils.showOverlayPermissionInstructions(context);
+      }
+      
+    } catch (e) {
+      print('Error requesting permission: $e');
+      // If opening settings failed, show the instructions dialog
+      if (mounted) {
+        PermissionUtils.showOverlayPermissionInstructions(context);
+      }
+    } finally {
+      // Always reset the checking state
+      if (mounted) {
+        setState(() {
+          _isChecking = false;
+        });
+      }
+      // Permission checking will continue with the timer
+    }
   }
 
   void _skipPermission() async {
@@ -187,7 +217,7 @@ class _OverlayPermissionScreenState extends State<OverlayPermissionScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                'You can change this permission anytime in your device settings',
+                                'You can change this permission anytime in your device settings under "Display over other apps"',
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ),

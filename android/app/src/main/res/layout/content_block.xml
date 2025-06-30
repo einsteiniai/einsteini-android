@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:layout_marginTop="8dp"
+    android:background="#1A2235">
+
+    <TextView
+        android:id="@+id/block_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Block Title"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#BD79FF"
+        android:fontFamily="@font/space_grotesk" />
+
+    <TextView
+        android:id="@+id/block_content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Block content goes here"
+        android:textColor="#FFFFFF"
+        android:fontFamily="@font/inter" />
+
+</LinearLayout> 

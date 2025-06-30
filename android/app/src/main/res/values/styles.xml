@@ -17,10 +17,10 @@
     </style>
 
     <!-- Einsteini custom theme for overlay UI -->
-    <style name="EinsteiniOverlayTheme" parent="@android:style/Theme.Material.Light">
-        <item name="android:colorPrimary">@color/colorPrimary</item>
-        <item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="android:colorAccent">@color/colorAccent</item>
+    <style name="EinsteiniOverlayTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
         <item name="android:colorBackground">@color/colorBackground</item>
         <item name="android:colorBackgroundFloating">@color/colorSurface</item>
         <item name="android:textColorPrimary">@color/textColorPrimary</item>
@@ -28,5 +28,29 @@
         <item name="android:textColorPrimaryInverse">@android:color/white</item>
         <item name="android:textColorSecondaryInverse">#CCFFFFFF</item>
         <item name="android:colorControlHighlight">@color/colorBorder</item>
+        
+        <!-- Material component style customization -->
+        <item name="chipStyle">@style/Widget.MaterialComponents.Chip.Choice</item>
+        <item name="chipGroupStyle">@style/Widget.MaterialComponents.ChipGroup</item>
+    </style>
+    
+    <!-- Custom text styles for overlay content -->
+    <style name="EinsteiniOverlayTitle">
+        <item name="android:fontFamily">@font/space_grotesk</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">#BD79FF</item>
+    </style>
+    
+    <style name="EinsteiniOverlayTabText">
+        <item name="android:fontFamily">@font/space_grotesk</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    
+    <style name="EinsteiniOverlayBodyText">
+        <item name="android:fontFamily">@font/inter</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">#FFFFFF</item>
     </style>
 </resources>

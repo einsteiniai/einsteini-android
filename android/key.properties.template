@@ -1,0 +1,8 @@
+# This is a template file. Copy it to 'key.properties' and fill in your actual keystore information
+# DO NOT commit the actual key.properties file to source control!
+ 
+# Path to your keystore file, relative to the android/ directory
+storeFile=../path/to/your/keystore.jks
+storePassword=your_keystore_password
+keyAlias=your_key_alias
+keyPassword=your_key_password 

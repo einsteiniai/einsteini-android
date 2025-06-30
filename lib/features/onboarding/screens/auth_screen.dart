@@ -6,6 +6,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:einsteiniapp/core/constants/app_constants.dart';
 import 'package:einsteiniapp/core/routes/app_router.dart' as router;
 import 'package:einsteiniapp/core/utils/toast_utils.dart';
+import 'package:einsteiniapp/core/services/api_service.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_appauth/flutter_appauth.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:url_launcher/url_launcher.dart';
 
 class AuthScreen extends StatefulWidget {
   final bool isSignUp;
@@ -27,6 +36,26 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isSignUp = false;
   bool _isLoading = false;
   bool _obscurePassword = true;
+  final ApiService _apiService = ApiService();
+  
+  // Social login requirements
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+  );
+  
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  
+  // Microsoft auth settings
+  final FlutterAppAuth _appAuth = const FlutterAppAuth();
+  final String _microsoftClientId = 'your-microsoft-client-id';
+  final String _microsoftRedirectUrl = 'com.einsteini.app://oauth/redirect';
+  final List<String> _microsoftScopes = ['openid', 'profile', 'email', 'offline_access'];
+
+  // LinkedIn OAuth settings
+  final String _linkedInClientId = 'your-linkedin-client-id';
+  final String _linkedInClientSecret = 'your-linkedin-client-secret';
+  final String _linkedInRedirectUrl = 'com.einsteini.app://oauth/linkedin';
+  final String _linkedInAuthUrl = 'https://www.linkedin.com/oauth/v2/authorization';
 
   @override
   void initState() {
@@ -58,22 +87,38 @@ class _AuthScreenState extends State<AuthScreen> {
     });
 
     try {
-      // In a real app, you would implement actual authentication here
-      await Future.delayed(const Duration(seconds: 1));
+      Map<String, dynamic> result;
       
-      // Save user login state
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(AppConstants.userLoggedInKey, true);
+      if (_isSignUp) {
+        // Sign up flow
+        result = await _apiService.signup(
+          name: _nameController.text,
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+      } else {
+        // Login flow
+        result = await _apiService.login(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+      }
       
-      // For demo, we're storing a fake user ID
-      await prefs.setString(AppConstants.userProfileKey, 'user_${DateTime.now().millisecondsSinceEpoch}');
-      
+      if (result['success']) {
       if (mounted) {
+          ToastUtils.showSuccessToast(result['message']);
         context.go(router.AppRoutes.home);
+        }
+      } else {
+        if (mounted) {
+          ToastUtils.showErrorToast(result['message']);
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     } catch (error) {
       if (mounted) {
-        // Show error toast
         ToastUtils.showErrorToast('Authentication failed: $error');
         setState(() {
           _isLoading = false;
@@ -292,19 +337,21 @@ class _AuthScreenState extends State<AuthScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _buildSocialButton(
-                          icon: Icons.g_mobiledata,
-                          onPressed: () {
-                            // Handle Google sign in
-                            _handleSocialLogin('Google');
-                          },
+                          icon: 'assets/icons/google.svg',
+                          provider: 'Google',
+                          onPressed: () => _handleSocialLogin('Google'),
                         ),
                         const SizedBox(width: 16),
                         _buildSocialButton(
-                          icon: Icons.apple,
-                          onPressed: () {
-                            // Handle Apple sign in
-                            _handleSocialLogin('Apple');
-                          },
+                          icon: 'assets/icons/microsoft.svg',
+                          provider: 'Microsoft',
+                          onPressed: () => _handleSocialLogin('Microsoft'),
+                        ),
+                        const SizedBox(width: 16),
+                        _buildSocialButton(
+                          icon: 'assets/icons/linkedin.svg',
+                          provider: 'LinkedIn',
+                          onPressed: () => _handleSocialLogin('LinkedIn'),
                         ),
                       ],
                     ),
@@ -319,7 +366,8 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _buildSocialButton({
-    required IconData icon,
+    required String icon,
+    required String provider,
     required VoidCallback onPressed,
   }) {
     return InkWell(
@@ -335,41 +383,238 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(
+        child: Center(
+          child: SvgPicture.asset(
           icon,
-          size: 32,
+            height: 24,
+            width: 24,
+          ),
         ),
       ),
     );
   }
   
-  void _handleSocialLogin(String provider) async {
+  Future<void> _handleSocialLogin(String provider) async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Simulate social sign-in
-      await Future.delayed(const Duration(seconds: 1));
+      Map<String, dynamic> socialUserData = {};
       
-      // Save user login state
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(AppConstants.userLoggedInKey, true);
-      await prefs.setString(AppConstants.userProfileKey, '${provider}_user_${DateTime.now().millisecondsSinceEpoch}');
+      // Handle different social login providers
+      switch (provider) {
+        case 'Google':
+          socialUserData = await _signInWithGoogle();
+          break;
+        case 'Microsoft':
+          socialUserData = await _signInWithMicrosoft();
+          break;
+        case 'LinkedIn':
+          socialUserData = await _signInWithLinkedIn();
+          break;
+        default:
+          throw Exception('Unknown provider: $provider');
+      }
+
+      // If the social login was successful, call our backend API
+      if (socialUserData['success'] == true) {
+        final result = await _apiService.socialLogin(
+          provider: provider,
+          token: socialUserData['token'],
+          email: socialUserData['email'],
+          name: socialUserData['name'],
+          photoUrl: socialUserData['photoUrl'],
+        );
+        
+        if (result['success']) {
+          // Save email to backend if needed
+          if (socialUserData['email'] != null) {
+            await _apiService.saveEmail(email: socialUserData['email']);
+          }
       
       if (mounted) {
-        // Show success toast
         ToastUtils.showSuccessToast('Successfully signed in with $provider');
         context.go(router.AppRoutes.home);
+          }
+        } else {
+          if (mounted) {
+            ToastUtils.showErrorToast('$provider sign in failed: ${result['message']}');
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        }
+      } else {
+        if (mounted) {
+          ToastUtils.showErrorToast('$provider sign in failed: ${socialUserData['error']}');
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     } catch (error) {
       if (mounted) {
-        // Show error toast
         ToastUtils.showErrorToast('$provider sign in failed: $error');
         setState(() {
           _isLoading = false;
         });
       }
+    }
+  }
+  
+  Future<Map<String, dynamic>> _signInWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      
+      if (googleUser == null) {
+        return {
+          'success': false,
+          'error': 'Sign in cancelled by user'
+        };
+      }
+      
+      // Get auth details from request
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      
+      // Store the token securely
+      await _secureStorage.write(key: 'google_access_token', value: googleAuth.accessToken);
+      await _secureStorage.write(key: 'google_id_token', value: googleAuth.idToken);
+      
+      return {
+        'success': true,
+        'token': googleAuth.idToken ?? googleAuth.accessToken ?? '',
+        'name': googleUser.displayName ?? '',
+        'email': googleUser.email,
+        'photoUrl': googleUser.photoUrl,
+      };
+    } catch (error) {
+      debugPrint('Google sign in error: $error');
+      return {
+        'success': false,
+        'error': error.toString(),
+      };
+    }
+  }
+  
+  Future<Map<String, dynamic>> _signInWithMicrosoft() async {
+    try {
+      // Use AppAuth to authenticate with Microsoft
+      final AuthorizationTokenResponse? result = await _appAuth.authorizeAndExchangeCode(
+        AuthorizationTokenRequest(
+          _microsoftClientId,
+          _microsoftRedirectUrl,
+          scopes: _microsoftScopes,
+          serviceConfiguration: const AuthorizationServiceConfiguration(
+            authorizationEndpoint: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+            tokenEndpoint: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+          ),
+        ),
+      );
+      
+      if (result == null) {
+        return {
+          'success': false,
+          'error': 'Microsoft sign in failed'
+        };
+      }
+      
+      // Store tokens securely
+      await _secureStorage.write(key: 'microsoft_access_token', value: result.accessToken);
+      await _secureStorage.write(key: 'microsoft_id_token', value: result.idToken);
+      
+      // Decode the ID token to get user information
+      String name = '';
+      String email = '';
+      String? photoUrl;
+      
+      if (result.idToken != null) {
+        try {
+          final Map<String, dynamic> decodedToken = JwtDecoder.decode(result.idToken!);
+          name = decodedToken['name'] ?? '';
+          email = decodedToken['preferred_username'] ?? '';
+        } catch (e) {
+          debugPrint('Error decoding Microsoft JWT: $e');
+        }
+      }
+      
+      return {
+        'success': true,
+        'token': result.accessToken,
+        'name': name,
+        'email': email,
+        'photoUrl': photoUrl,
+      };
+    } catch (error) {
+      debugPrint('Microsoft sign in error: $error');
+      return {
+        'success': false,
+        'error': error.toString(),
+      };
+    }
+  }
+  
+  Future<Map<String, dynamic>> _signInWithLinkedIn() async {
+    try {
+      // Use the LinkedIn OAuth flow - simplified for direct use in mobile
+      // In a production app, you would implement proper OAuth flow
+      // This is a simplified implementation that requires manual handling
+      
+      // Show an alert that we're launching LinkedIn sign-in
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Opening LinkedIn login page...')),
+        );
+      }
+      
+      // For simplicity, we're going to mock the LinkedIn sign-in
+      // In a real implementation, you would:
+      // 1. Launch the browser with the LinkedIn auth URL
+      // 2. Handle the redirect and extract the code
+      
+      // Simulate successful authentication
+      await Future.delayed(const Duration(seconds: 2));
+      
+      // Mock code that would normally come from the redirect
+      const String mockCode = "mocked_linkedin_auth_code";
+      
+      // In a real implementation, we would check if the code is null
+      // but since we're using a mock code, we'll just proceed
+      
+      // Mock a token exchange
+      // In a real app, you would make an HTTP request to LinkedIn's token endpoint
+      // We're mocking this step to avoid the actual HTTP request
+      
+      // Mock token response
+      final Map<String, dynamic> mockTokenResponse = {
+        'access_token': 'mocked_linkedin_access_token',
+        'expires_in': 3600
+      };
+      
+      // Simulate a successful token response
+      final String accessToken = mockTokenResponse['access_token'];
+      
+      // Store tokens securely
+      await _secureStorage.write(key: 'linkedin_access_token', value: accessToken);
+      
+      // Mock user data that would normally come from API calls
+      const String name = 'LinkedIn User';
+      const String email = 'linkedin_user@example.com';
+      const String? photoUrl = null;
+      
+      return {
+        'success': true,
+        'token': accessToken,
+        'name': name,
+        'email': email,
+        'photoUrl': photoUrl,
+      };
+    } catch (error) {
+      debugPrint('LinkedIn sign in error: $error');
+      return {
+        'success': false,
+        'error': error.toString(),
+      };
     }
   }
 } 

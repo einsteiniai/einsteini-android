@@ -6,6 +6,8 @@ import 'core/theme/theme_provider.dart';
 import 'core/theme/theme_switcher.dart';
 import 'core/services/overlay_service.dart';
 import 'package:flutter/services.dart';
+import 'core/utils/platform_channel.dart';
+import 'core/services/history_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +26,38 @@ void main() async {
     systemNavigationBarColor: Colors.white,
     systemNavigationBarIconBrightness: Brightness.dark,
   ));
+  
+  // Initialize platform channel
+  PlatformChannel.init();
+  
+  // Set up listener for scraped content
+  PlatformChannel.onContentScraped = (Map<String, dynamic> content) async {
+    // Save the scraped content to history
+    try {
+      final title = content['content'] != null 
+          ? AnalyzedPost.generateTitleFromContent(content['content'].toString())
+          : 'LinkedIn Post';
+      
+      final analyzedPost = AnalyzedPost(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: title,
+        content: content['content']?.toString() ?? 'No content',
+        author: content['author']?.toString() ?? 'Unknown author',
+        date: content['date']?.toString() ?? 'Unknown date',
+        analyzedAt: DateTime.now().toIso8601String(),
+        postUrl: content['url']?.toString() ?? '',
+        likes: content['likes'] as int? ?? 0,
+        comments: content['comments'] as int? ?? 0,
+        images: (content['images'] as List<dynamic>?)?.cast<String>() ?? [],
+        commentsList: (content['commentsList'] as List<dynamic>?)?.map((e) => 
+          Map<String, String>.from(e as Map)).toList() ?? [],
+      );
+      
+      await HistoryService.savePost(analyzedPost);
+    } catch (e) {
+      debugPrint('Error saving scraped content to history: $e');
+    }
+  };
   
   runApp(
     const ProviderScope(

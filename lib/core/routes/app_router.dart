@@ -10,6 +10,8 @@ import '../../features/onboarding/screens/auth_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/home/screens/profile_screen.dart';
 import '../../features/home/screens/settings_screen.dart';
+import '../../features/home/screens/privacy_policy_screen.dart';
+import '../../features/home/screens/terms_of_service_screen.dart';
 import '../constants/app_constants.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -23,6 +25,8 @@ class AppRoutes {
   static const String home = '/home';
   static const String profile = '/profile';
   static const String settings = '/settings';
+  static const String privacyPolicy = '/privacy-policy';
+  static const String termsOfService = '/terms-of-service';
 }
 
 GoRouter createRouter() {
@@ -67,6 +71,14 @@ GoRouter createRouter() {
       GoRoute(
         path: AppRoutes.settings,
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.privacyPolicy,
+        builder: (context, state) => const PrivacyPolicyScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.termsOfService,
+        builder: (context, state) => const TermsOfServiceScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) {

@@ -87,8 +87,24 @@ class _AccessibilityPermissionScreenState extends State<AccessibilityPermissionS
   }
 
   Future<void> _requestPermission() async {
+    // Show the accessibility permission explanation dialog
+    PermissionUtils.showAccessibilityPermissionExplanation(
+      context,
+      onAgree: () async {
+        // User agreed to the permission, open accessibility settings
     await PlatformChannel.openAccessibilitySettings();
     // Permission checking will continue with the timer
+      },
+      onDisagree: () {
+        // User disagreed, do nothing or show a message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Accessibility permission is required for full functionality'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      },
+    );
   }
 
   void _skipPermission() async {

@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.6.0
@@ -54,6 +54,13 @@ dependencies:
   html: ^0.15.2
   uuid: ^4.3.3
   url_launcher: ^6.2.5
+  flutter_markdown: ^0.6.18
+
+  # Social login dependencies
+  google_sign_in: ^6.1.6
+  flutter_secure_storage: ^9.0.0
+  flutter_appauth: ^6.0.2
+  jwt_decoder: ^2.0.1
 
 dev_dependencies:
   flutter_test:
@@ -81,6 +88,15 @@ flutter:
   assets:
     - assets/animations/
     - assets/fonts/
+    - assets/fonts/SpaceGrotesk-Medium.ttf
+    - assets/fonts/SpaceGrotesk-Regular.ttf
+    - assets/fonts/SpaceGrotesk-Bold.ttf
+    - assets/fonts/SpaceGrotesk-Light.ttf
+    - assets/fonts/SpaceGrotesk-SemiBold.ttf
+    - assets/fonts/Inter_28pt-Regular.ttf
+    - assets/fonts/Inter_28pt-Medium.ttf
+    - assets/fonts/Inter_28pt-Bold.ttf
+    - assets/fonts/Inter_28pt-Light.ttf
     - assets/icons/
     - assets/images/
     - assets/images/einsteini_black.png

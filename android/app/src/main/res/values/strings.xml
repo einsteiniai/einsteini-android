@@ -2,5 +2,62 @@
 <resources>
     <string name="app_name">einsteini.ai</string>
     <string name="app_tagline">Effortlessly human.</string>
-    <string name="accessibility_service_description">einsteini.ai needs accessibility permission to help you create engaging LinkedIn content. effortlessly human.</string>
+    
+    <!-- Service names and descriptions -->
+    <string name="accessibility_service_name">einsteini.ai Assistant</string>
+    <string name="accessibility_service_description">einsteini.ai uses the Android Accessibility service to process your text and provide you with writing suggestions. To provide you with an optimized product, we also process some additional information, such as the type of device you\'re using. We don\'t and will not sell your data.\n\neinsteini.ai uses the following Accessibility capabilities:\n\nRetrieve your typed text:\nThis is required for einsteini.ai to provide writing suggestions in supported apps.\n\nDetect window changed:\nThis is required to turn einsteini.ai on or off when you\'re typing in apps.\n\nEnabling the shortcut toggle on this screen is NOT required.</string>
+    <string name="overlay_service_name">einsteini.ai Overlay</string>
+    <string name="overlay_service_description">Provides AI assistance directly within LinkedIn to help you create better content.</string>
+    
+    <!-- Permission descriptions -->
+    <string name="permission_overlay_desc">Required to show the AI assistant overlay when you need help with creating content.</string>
+    <string name="permission_accessibility_desc">Required to understand LinkedIn context to provide relevant AI suggestions.</string>
+    
+    <!-- Accessibility service detailed descriptions -->
+    <string name="accessibility_service_details">einsteini.ai uses the Android Accessibility service to process LinkedIn content and provide you with AI-powered writing suggestions. To provide you with an optimized product, we also access some additional information, such as the type of content you\'re viewing. We don\'t and will not sell your data.</string>
+    <string name="accessibility_capabilities_title">einsteini.ai uses the following Accessibility capabilities:</string>
+    <string name="retrieve_text_title">Retrieve LinkedIn content:</string>
+    <string name="retrieve_text_desc">This is required for einsteini.ai to provide intelligent content suggestions for LinkedIn posts and comments.</string>
+    <string name="detect_window_title">Detect window changed:</string>
+    <string name="detect_window_desc">This is required to turn einsteini.ai on or off when you\'re browsing different sections of LinkedIn.</string>
+    <string name="shortcut_note">Enabling the shortcut toggle in accessibility settings is NOT required.</string>
+    
+    <!-- LinkedIn Features -->
+    <string name="linkedin_comment_generation">Generate Comment</string>
+    <string name="linkedin_agree">Agree</string>
+    <string name="linkedin_expand">Expand</string>
+    <string name="linkedin_fun">Fun</string>
+    <string name="linkedin_ai_rectify">AI Rectify</string>
+    <string name="linkedin_question">Question</string>
+    <string name="linkedin_perspective">Perspective</string>
+    <string name="linkedin_personalize">Personalize</string>
+    <string name="linkedin_translate">Translate</string>
+    
+    <string name="linkedin_post_generation">Generate Post</string>
+    <string name="linkedin_framework_aida">AIDA Framework</string>
+    <string name="linkedin_framework_has">HAS Framework</string>
+    <string name="linkedin_framework_fab">FAB Framework</string>
+    <string name="linkedin_framework_star">STAR Framework</string>
+    
+    <string name="linkedin_about_enhance">Enhance</string>
+    <string name="linkedin_about_polish">Polish</string>
+    <string name="linkedin_about_expand">Expand</string>
+    <string name="linkedin_about_shorten">Shorten</string>
+    <string name="linkedin_about_create">Create New</string>
+    
+    <string name="linkedin_connection_formal">Formal</string>
+    <string name="linkedin_connection_casual">Casual</string>
+    <string name="linkedin_connection_generic">Generic</string>
+    <string name="linkedin_connection_specific">Specific Info</string>
+    
+    <string name="linkedin_save_profile">Save Profile</string>
+    <string name="linkedin_profile_saved">Profile saved successfully</string>
+    <string name="linkedin_profile_already_saved">Profile already saved</string>
+    
+    <string name="linkedin_generating">Generating…</string>
+    <string name="linkedin_error">Error occurred</string>
+    
+    <!-- Privacy Policy and Terms -->
+    <string name="privacy_policy_title">Privacy Policy</string>
+    <string name="terms_of_service_title">Terms of Service</string>
 </resources> 

@@ -6,6 +6,7 @@ import 'package:einsteiniapp/core/utils/platform_channel.dart';
 import 'package:einsteiniapp/core/services/history_service.dart';
 import 'dart:async';
 import 'package:uuid/uuid.dart';
+import 'package:einsteiniapp/core/services/linkedin_service.dart';
 
 class AIAssistantTab extends StatefulWidget {
   const AIAssistantTab({Key? key}) : super(key: key);
@@ -15,59 +16,68 @@ class AIAssistantTab extends StatefulWidget {
 }
 
 class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProviderStateMixin {
-  // Tab controller
+  // Variables for the AI assistant tab
   late TabController _tabController;
-  
-  // LinkedIn post analyzer states
   final TextEditingController _linkController = TextEditingController();
+  final TextEditingController _postTopicController = TextEditingController();
+  final TextEditingController _postToneController = TextEditingController();
+  final TextEditingController _postLengthController = TextEditingController();
+  final TextEditingController _industryController = TextEditingController();
+  final TextEditingController _experienceController = TextEditingController();
+  final TextEditingController _skillsController = TextEditingController();
+  final TextEditingController _goalController = TextEditingController();
+  
+  // State variables
   bool _isLoading = false;
   bool _hasAnalyzedContent = false;
+  bool _isGeneratingPost = false;
+  bool _isGeneratingAboutMe = false;
+  bool _isGeneratingComment = false;
+  String _errorMessage = '';
+  String _selectedOption = '';
+  String _selectedLanguage = 'Default';
+  String _selectedCommentTone = 'Professional';
+  String _summary = '';
+  String _translation = '';
+  String _generatedPost = '';
+  String _generatedAboutMe = '';
+  String _generatedComment = '';
+  
+  // Post data
   String _postContent = '';
   String _postAuthor = '';
   String _postDate = '';
+  String _postUrl = '';
   int _likes = 0;
   int _comments = 0;
   List<String> _postImages = [];
   List<Map<String, String>> _commentsList = [];
-  String _postUrl = '';
-  String _errorMessage = '';
   
-  // Selected option state for LinkedIn analyzer
-  String _selectedOption = '';
-  String _translation = '';
-  String _summary = '';
-  String _selectedLanguage = 'Default';  // Add selected language
-  
-  // List of available languages for translation
+  // Available languages for translation
   final List<String> _availableLanguages = [
     'Default',
     'Spanish',
     'French',
     'German',
-    'English',
-    'Kannada',
-    'Russian',
-    'Mandarin',
-    'Japanese',
     'Italian',
-    'Dutch',
-    'Arabic'
+    'Portuguese',
+    'Russian',
+    'Chinese',
+    'Japanese',
+    'Korean',
+    'Arabic',
+    'Hindi',
   ];
   
-  // Controllers for Create Post section
-  final TextEditingController _postTopicController = TextEditingController();
-  final TextEditingController _postToneController = TextEditingController();
-  final TextEditingController _postLengthController = TextEditingController();
-  String _generatedPost = '';
-  bool _isGeneratingPost = false;
-  
-  // Controllers for About Me section
-  final TextEditingController _industryController = TextEditingController();
-  final TextEditingController _experienceController = TextEditingController();
-  final TextEditingController _skillsController = TextEditingController();
-  final TextEditingController _goalController = TextEditingController();
-  String _generatedAboutMe = '';
-  bool _isGeneratingAboutMe = false;
+  // Available comment tones
+  final List<String> _availableCommentTones = [
+    'Professional',
+    'Friendly',
+    'Enthusiastic',
+    'Thoughtful',
+    'Questioning',
+    'Supportive',
+  ];
   
   @override
   void initState() {
@@ -105,6 +115,13 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
       });
     }
   }
+  
+  // Method to set tab index from outside
+  void setTabIndex(int index) {
+    if (index >= 0 && index < _tabController.length) {
+      _tabController.animateTo(index);
+    }
+  }
 
   Future<void> _analyzeLinkedInPost() async {
     final link = _linkController.text.trim();
@@ -126,7 +143,7 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
     });
     
     try {
-      // Use the JSoup scraper to extract content from the LinkedIn post
+      // Use the backend API to extract content from the LinkedIn post
       final scrapedData = await PlatformChannel.scrapeLinkedInPost(link);
       
       setState(() {
@@ -141,9 +158,11 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
         _commentsList = (scrapedData['commentsList'] as List<dynamic>?)?.cast<Map<String, String>>() ?? [];
         
         // Check if there was an error in scraping
-        if (_postContent.contains('Failed to scrape LinkedIn post')) {
+        if (_postContent.contains('Failed to scrape LinkedIn post') || 
+            _postContent.contains('Error:') || 
+            _postContent.contains('Network or server issue')) {
           _errorMessage = _postContent;
-          _postContent = 'LinkedIn is actively blocking scraping attempts. Try a different URL or check your internet connection.';
+          _postContent = 'Unable to retrieve LinkedIn post content. This may be due to LinkedIn\'s security measures or the post\'s privacy settings.';
         }
         
         // Generate summary if summarize option is selected
@@ -159,7 +178,11 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
       // Save to history
       _saveToHistory();
       
+      if (_errorMessage.isEmpty) {
       ToastUtils.showSuccessToast('Post analyzed successfully');
+      } else {
+        ToastUtils.showErrorToast('Post analysis incomplete: Some content may be missing');
+      }
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -254,37 +277,55 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
     });
   }
   
-  void _generateTranslation() {
-    // In a real app, this would call a translation API
-    // For now, we'll use a mock translation
+  void _generateTranslation() async {
+    if (_postContent.isEmpty) {
+      return;
+    }
+    
+    // Don't translate if language is Default
+    if (_selectedLanguage == 'Default') {
+      setState(() {
+        _translation = '';
+        _isLoading = false;
+      });
+      ToastUtils.showErrorToast('Please select a language');
+      return;
+    }
+    
     setState(() {
-      // Mock translations based on selected language
-      String translationPrefix = '';
+      _isLoading = true;
+    });
+    
+    try {
+      // Use the LinkedInService to perform the actual translation
+      final linkedInService = LinkedInService();
+      final result = await linkedInService.translateContent(
+        content: _postContent,
+        targetLanguage: _selectedLanguage.toLowerCase(),
+        author: _postAuthor,
+        formatForDisplay: true,
+      );
       
-      switch (_selectedLanguage) {
-        case 'Spanish':
-          translationPrefix = 'Contenido traducido (Español): ';
-          break;
-        case 'French':
-          translationPrefix = 'Contenu traduit (Français): ';
-          break;
-        case 'German':
-          translationPrefix = 'Übersetzter Inhalt (Deutsch): ';
-          break;
-        case 'Russian':
-          translationPrefix = 'Переведенный контент (Русский): ';
-          break;
-        case 'Japanese':
-          translationPrefix = '翻訳されたコンテンツ (日本語): ';
-          break;
-        case 'Default':
-        default:
-          translationPrefix = 'Translated content: ';
-          break;
+      if (result.containsKey('error')) {
+        setState(() {
+          _isLoading = false;
+          _translation = 'Error translating content: ${result['error']}';
+        });
+        ToastUtils.showErrorToast('Translation failed. Please try again.');
+        return;
       }
       
-      _translation = '$translationPrefix${_postContent.length > 100 ? '${_postContent.substring(0, 100)}...' : _postContent}\n\n[This is a simulated translation to ${_selectedLanguage == 'Default' ? 'the target language' : _selectedLanguage}.]';
-    });
+      setState(() {
+        _isLoading = false;
+        _translation = result['formattedTranslation'] ?? result['translation'] ?? 'Translation error';
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _translation = 'Error translating content: $e';
+      });
+      ToastUtils.showErrorToast('Error translating content: $e');
+    }
   }
   
   void _switchToCommentMode() {
@@ -361,49 +402,54 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      resizeToAvoidBottomInset: true,
-      body: Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          flexibleSpace: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
         children: [
             TabBar(
-              controller: _tabController,
-              labelColor: Theme.of(context).colorScheme.primary,
-              unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-              indicatorColor: Theme.of(context).colorScheme.primary,
-              indicatorSize: TabBarIndicatorSize.tab,
               tabs: const [
                 Tab(text: 'Analyze Post'),
                 Tab(text: 'Create Post'),
                 Tab(text: 'About Me'),
               ],
+                labelColor: Theme.of(context).colorScheme.primary,
+                unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                indicatorColor: Theme.of(context).colorScheme.primary,
+                dividerColor: Colors.transparent,
+              ),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            // Analyze LinkedIn Post Tab
+            SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: _buildLinkedInAnalysisTab(),
+              ),
             ),
             
-            const SizedBox(height: 16),
+            // Create LinkedIn Post Tab
+            SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: _buildCreatePostTab(),
+              ),
+            ),
             
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                physics: const ClampingScrollPhysics(),
-                children: [
-                  Container(
-                    width: double.infinity,
-                    child: _buildLinkedInPostTab(),
-                  ),
-                  
-                  Container(
-                    width: double.infinity,
-                    child: _buildCreatePostTab(),
-                  ),
-                  
-                  Container(
-                    width: double.infinity,
-                    child: _buildAboutMeTab(),
-                  ),
-                ],
+            // About Me Tab
+            SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: _buildAboutMeTab(),
               ),
             ),
           ],
@@ -412,46 +458,38 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
     );
   }
   
-  // LinkedIn Post Tab (existing functionality)
-  Widget _buildLinkedInPostTab() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-          Text(
-            'Enter a LinkedIn post URL to analyze and generate AI-powered responses',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
+  // LinkedIn Analysis Tab
+  Widget _buildLinkedInAnalysisTab() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildLinkInputSection(),
           
           const SizedBox(height: 24),
           
-          _buildLinkInputSection().animate().fadeIn(duration: 400.ms, delay: 200.ms),
-          
-          const SizedBox(height: 24),
-          
-        Expanded(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            transitionBuilder: (Widget child, Animation<double> animation) {
-              return FadeTransition(
-                opacity: animation,
-                child: child,
-              );
-            },
-            child: _isLoading
-              ? _buildLoadingIndicator()
-              : _hasAnalyzedContent && _selectedOption.isEmpty
-                ? _buildOptionButtons()
-                : _hasAnalyzedContent && _selectedOption == 'summarize'
-                  ? _buildSummarizeContent()
-                  : _hasAnalyzedContent && _selectedOption == 'translate'
-                    ? _buildTranslateContent()
-                    : _hasAnalyzedContent && _selectedOption == 'comment'
-                      ? _buildCommentContent()
-                      : _buildEmptyState(),
-          ),
-        ),
-      ],
+          if (_isLoading) 
+            _buildLoadingIndicator()
+          else if (_hasAnalyzedContent) 
+            _buildContentBasedOnSelection()
+          else
+            _buildEmptyState(),
+        ],
+      ),
     );
+  }
+  
+  Widget _buildContentBasedOnSelection() {
+    if (_selectedOption.isEmpty) {
+      return _buildAnalyzedContent();
+    } else if (_selectedOption == 'summarize') {
+      return _buildSummarizeContent();
+    } else if (_selectedOption == 'translate') {
+      return _buildTranslateContent();
+    } else if (_selectedOption == 'comment') {
+      return _buildCommentContent();
+    }
+    return _buildAnalyzedContent();
   }
   
   // Create Post Tab
@@ -477,168 +515,166 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
         
         const SizedBox(height: 24),
         
-        Expanded(
-          child: SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
-            padding: EdgeInsets.only(bottom: keyboardVisible ? 200 : 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Topic input
-                _buildInputField(
-                  label: 'Post Topic',
-                  hintText: 'e.g., Digital Marketing, Leadership, Tech Trends',
-                  controller: _postTopicController,
-                  icon: Icons.topic,
+        SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
+          padding: EdgeInsets.only(bottom: keyboardVisible ? 200 : 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Topic input
+              _buildInputField(
+                label: 'Post Topic',
+                hintText: 'e.g., Digital Marketing, Leadership, Tech Trends',
+                controller: _postTopicController,
+                icon: Icons.topic,
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Tone selection
+              _buildDropdownField(
+                label: 'Content Tone',
+                hintText: 'Select the tone for your post',
+                controller: _postToneController,
+                icon: Icons.mood,
+                options: ['Professional', 'Friendly', 'Inspirational', 'Educational', 'Thought-Provoking'],
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Length selection
+              _buildDropdownField(
+                label: 'Post Length',
+                hintText: 'Select the length of your post',
+                controller: _postLengthController,
+                icon: Icons.format_size,
+                options: ['Short', 'Medium', 'Long'],
+              ),
+              
+              const SizedBox(height: 24),
+              
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isGeneratingPost ? null : _generatePost,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isGeneratingPost
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Generate Post'),
                 ),
-                
-                const SizedBox(height: 16),
-                
-                // Tone selection
-                _buildDropdownField(
-                  label: 'Content Tone',
-                  hintText: 'Select the tone for your post',
-                  controller: _postToneController,
-                  icon: Icons.mood,
-                  options: ['Professional', 'Friendly', 'Inspirational', 'Educational', 'Thought-Provoking'],
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // Length selection
-                _buildDropdownField(
-                  label: 'Post Length',
-                  hintText: 'Select the length of your post',
-                  controller: _postLengthController,
-                  icon: Icons.format_size,
-                  options: ['Short', 'Medium', 'Long'],
-                ),
-                
+              ),
+              
+              if (_generatedPost.isNotEmpty) ...[
                 const SizedBox(height: 24),
                 
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isGeneratingPost ? null : _generatePost,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _isGeneratingPost
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Generate Post'),
+                // Generated post
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                ),
-                
-                if (_generatedPost.isNotEmpty) ...[
-                  const SizedBox(height: 24),
-                  
-                  // Generated post
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                backgroundColor: Theme.of(context).colorScheme.primary,
-                                radius: 16,
-                                child: const Icon(
-                                  Icons.auto_awesome,
-                                  size: 16,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'AI-Generated Post',
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          
-                          Text(
-                            _generatedPost,
-                            style: Theme.of(context).textTheme.bodyLarge,
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              OutlinedButton.icon(
-                                onPressed: () {
-                                  Clipboard.setData(ClipboardData(text: _generatedPost)).then((_) {
-                                    ToastUtils.showSuccessToast('Post copied to clipboard');
-                                  });
-                                },
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                icon: const Icon(Icons.copy, size: 16),
-                                label: const Text('Copy'),
-                              ),
-                              
-                              ElevatedButton.icon(
-                                onPressed: () {
-                                  // In a real app, this would open the LinkedIn app with the post pre-filled
-                                  ToastUtils.showInfoToast('This would open LinkedIn with this post');
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                icon: const Icon(Icons.send, size: 16),
-                                label: const Text('Post to LinkedIn'),
-                              ),
-                            ],
-                          ),
-                          
-                          const SizedBox(height: 12),
-                          
-                          OutlinedButton.icon(
-                            onPressed: _generatePost,
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              minimumSize: const Size(double.infinity, 0),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: Theme.of(context).colorScheme.primary,
+                              radius: 16,
+                              child: const Icon(
+                                Icons.auto_awesome,
+                                size: 16,
+                                color: Colors.white,
                               ),
                             ),
-                            icon: const Icon(Icons.refresh, size: 16),
-                            label: const Text('Generate Another Version'),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'AI-Generated Post',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        Text(
+                          _generatedPost,
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: _generatedPost)).then((_) {
+                                  ToastUtils.showSuccessToast('Post copied to clipboard');
+                                });
+                              },
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              icon: const Icon(Icons.copy, size: 16),
+                              label: const Text('Copy'),
+                            ),
+                            
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                // In a real app, this would open the LinkedIn app with the post pre-filled
+                                ToastUtils.showInfoToast('This would open LinkedIn with this post');
+                              },
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              icon: const Icon(Icons.send, size: 16),
+                              label: const Text('Post to LinkedIn'),
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 12),
+                        
+                        OutlinedButton.icon(
+                          onPressed: _generatePost,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            minimumSize: const Size(double.infinity, 0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
-                        ],
-                      ),
+                          icon: const Icon(Icons.refresh, size: 16),
+                          label: const Text('Generate Another Version'),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ],
@@ -668,178 +704,176 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
         
         const SizedBox(height: 24),
         
-        Expanded(
-          child: SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
-            padding: EdgeInsets.only(bottom: keyboardVisible ? 200 : 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Industry input
-                _buildInputField(
-                  label: 'Your Industry',
-                  hintText: 'e.g., Software Development, Marketing, Finance',
-                  controller: _industryController,
-                  icon: Icons.business,
+        SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
+          padding: EdgeInsets.only(bottom: keyboardVisible ? 200 : 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Industry input
+              _buildInputField(
+                label: 'Your Industry',
+                hintText: 'e.g., Software Development, Marketing, Finance',
+                controller: _industryController,
+                icon: Icons.business,
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Experience input
+              _buildInputField(
+                label: 'Years of Experience',
+                hintText: 'e.g., 5+ years, 10+ years',
+                controller: _experienceController,
+                icon: Icons.work,
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Skills input
+              _buildInputField(
+                label: 'Key Skills',
+                hintText: 'e.g., Project Management, Data Analysis, Leadership',
+                controller: _skillsController,
+                icon: Icons.psychology,
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Goal input
+              _buildInputField(
+                label: 'Professional Goal',
+                hintText: 'e.g., Driving innovation, Building high-performance teams',
+                controller: _goalController,
+                icon: Icons.emoji_events,
+              ),
+              
+              const SizedBox(height: 24),
+              
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isGeneratingAboutMe ? null : _generateAboutMe,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isGeneratingAboutMe
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Generate About Me'),
                 ),
-                
-                const SizedBox(height: 16),
-                
-                // Experience input
-                _buildInputField(
-                  label: 'Years of Experience',
-                  hintText: 'e.g., 5+ years, 10+ years',
-                  controller: _experienceController,
-                  icon: Icons.work,
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // Skills input
-                _buildInputField(
-                  label: 'Key Skills',
-                  hintText: 'e.g., Project Management, Data Analysis, Leadership',
-                  controller: _skillsController,
-                  icon: Icons.psychology,
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // Goal input
-                _buildInputField(
-                  label: 'Professional Goal',
-                  hintText: 'e.g., Driving innovation, Building high-performance teams',
-                  controller: _goalController,
-                  icon: Icons.emoji_events,
-                ),
-                
+              ),
+              
+              if (_generatedAboutMe.isNotEmpty) ...[
                 const SizedBox(height: 24),
                 
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isGeneratingAboutMe ? null : _generateAboutMe,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _isGeneratingAboutMe
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Generate About Me'),
+                // Generated About Me
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                ),
-                
-                if (_generatedAboutMe.isNotEmpty) ...[
-                  const SizedBox(height: 24),
-                  
-                  // Generated About Me
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                backgroundColor: Theme.of(context).colorScheme.primary,
-                                radius: 16,
-                                child: const Icon(
-                                  Icons.person,
-                                  size: 16,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'AI-Generated About Me',
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          
-                          Text(
-                            _generatedAboutMe,
-                            style: Theme.of(context).textTheme.bodyLarge,
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              OutlinedButton.icon(
-                                onPressed: () {
-                                  Clipboard.setData(ClipboardData(text: _generatedAboutMe)).then((_) {
-                                    ToastUtils.showSuccessToast('About Me copied to clipboard');
-                                  });
-                                },
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                icon: const Icon(Icons.copy, size: 16),
-                                label: const Text('Copy'),
-                              ),
-                              
-                              ElevatedButton.icon(
-                                onPressed: () {
-                                  // In a real app, this would open the LinkedIn app to update profile
-                                  ToastUtils.showInfoToast('This would open your LinkedIn profile');
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                icon: const Icon(Icons.edit, size: 16),
-                                label: const Text('Update Profile'),
-                              ),
-                            ],
-                          ),
-                          
-                          const SizedBox(height: 12),
-                          
-                          OutlinedButton.icon(
-                            onPressed: _generateAboutMe,
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              minimumSize: const Size(double.infinity, 0),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: Theme.of(context).colorScheme.primary,
+                              radius: 16,
+                              child: const Icon(
+                                Icons.person,
+                                size: 16,
+                                color: Colors.white,
                               ),
                             ),
-                            icon: const Icon(Icons.refresh, size: 16),
-                            label: const Text('Generate Another Version'),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'AI-Generated About Me',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        Text(
+                          _generatedAboutMe,
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: _generatedAboutMe)).then((_) {
+                                  ToastUtils.showSuccessToast('About Me copied to clipboard');
+                                });
+                              },
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              icon: const Icon(Icons.copy, size: 16),
+                              label: const Text('Copy'),
+                            ),
+                            
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                // In a real app, this would open the LinkedIn app to update profile
+                                ToastUtils.showInfoToast('This would open your LinkedIn profile');
+                              },
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              icon: const Icon(Icons.edit, size: 16),
+                              label: const Text('Update Profile'),
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 12),
+                        
+                        OutlinedButton.icon(
+                          onPressed: _generateAboutMe,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            minimumSize: const Size(double.infinity, 0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
-                        ],
-                      ),
+                          icon: const Icon(Icons.refresh, size: 16),
+                          label: const Text('Generate Another Version'),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ],
-            ),
+            ],
           ),
-        )
+        ),
       ],
     );
   }
@@ -1175,36 +1209,36 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
   
   Widget _buildEmptyState() {
     return Container(
-      alignment: Alignment.center,
+      height: 400,
       width: double.infinity,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.link_off,
-              size: 64,
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No LinkedIn post analyzed yet',
-              style: Theme.of(context).textTheme.titleLarge,
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.link_off,
+            size: 64,
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'No LinkedIn post analyzed yet',
+            style: Theme.of(context).textTheme.titleLarge,
             textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Enter a LinkedIn post URL above to get started',
-              style: Theme.of(context).textTheme.bodyLarge,
-              textAlign: TextAlign.center,
-            ),
-          ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Enter a LinkedIn post URL above to get started',
+            style: Theme.of(context).textTheme.bodyLarge,
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
   
-  Widget _buildOptionButtons() {
-    return SingleChildScrollView(
-        child: Column(
+  Widget _buildAnalyzedContent() {
+    return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -1246,17 +1280,8 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
             
           const SizedBox(height: 24),
           
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.25,
-            ),
-            child: _buildPostCard(),
-          ),
-          
-          // Add extra space at the bottom to ensure no overflow with keyboard
-          SizedBox(height: MediaQuery.of(context).viewInsets.bottom > 0 ? 200 : 0),
-        ],
-      ),
+        _buildPostCard(),
+      ],
     );
   }
   
@@ -1369,6 +1394,205 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
               const SizedBox(height: 8),
               _buildImagePreview(),
                     ],
+            
+            const SizedBox(height: 12),
+            
+            // Expandable section for detailed scraped data
+            ExpansionTile(
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Expand',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      // Create a formatted string with all the scraped data
+                      final scrapedDataText = '''
+Author: $_postAuthor
+Date: $_postDate
+Likes: $_likes
+Comments: $_comments
+URL: $_postUrl
+
+Full Content:
+$_postContent
+
+${_postImages.isNotEmpty ? 'Images:\n${_postImages.join('\n')}' : ''}
+
+${_commentsList.isNotEmpty ? 'Comments:\n${_commentsList.map((c) => '${c['author'] ?? 'Unknown'}: ${c['text'] ?? ''}').join('\n')}' : ''}
+
+${_errorMessage.isNotEmpty ? 'Error:\n$_errorMessage' : ''}
+''';
+                      
+                      Clipboard.setData(ClipboardData(text: scrapedDataText)).then((_) {
+                        ToastUtils.showSuccessToast('Scraped data copied to clipboard');
+                      });
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                      minimumSize: const Size(0, 30),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    icon: const Icon(Icons.copy, size: 14),
+                    label: const Text('Copy All', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              initiallyExpanded: false,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildScrapedDataRow('Author', _postAuthor),
+                      _buildScrapedDataRow('Date', _postDate),
+                      _buildScrapedDataRow('Likes', _likes.toString()),
+                      _buildScrapedDataRow('Comments', _comments.toString()),
+                      _buildScrapedDataRow('URL', _postUrl),
+                      
+                      const SizedBox(height: 8),
+                      
+                      Text(
+                        'Full Content:',
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _postContent,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      
+                      if (_postImages.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Images:',
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _postImages.map((url) => Text(
+                            url,
+                            style: Theme.of(context).textTheme.bodySmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          )).toList(),
+                        ),
+                      ],
+                      
+                      if (_commentsList.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Comments:',
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        ...List.generate(
+                          _commentsList.length > 3 ? 3 : _commentsList.length,
+                          (index) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: RichText(
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: '${_commentsList[index]['author'] ?? 'Unknown'}: ',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: '${_commentsList[index]['text'] ?? ''}',
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (_commentsList.length > 3)
+                          Text(
+                            '... and ${_commentsList.length - 3} more comments',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                      ],
+                      
+                      if (_errorMessage.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Error:',
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _errorMessage,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildScrapedDataRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: RichText(
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: 12,
+              ),
+            ),
+            TextSpan(
+              text: value,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: 12,
+              ),
+            ),
                   ],
                 ),
               ),
@@ -1393,11 +1617,7 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
   }
   
   Widget _buildSummarizeContent() {
-    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-    
-    return SingleChildScrollView(
-      padding: EdgeInsets.only(bottom: keyboardVisible ? 200 : 32),
-      child: Column(
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -1425,14 +1645,7 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
               
               const SizedBox(height: 16),
               
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: keyboardVisible 
-                ? MediaQuery.of(context).size.height * 0.15 
-                : MediaQuery.of(context).size.height * 0.25,
-            ),
-            child: _buildPostCard(),
-          ),
+        _buildPostCard(),
             
             const SizedBox(height: 24),
             
@@ -1471,89 +1684,138 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
             
             const SizedBox(height: 16),
             
-                  Text(
-                    _summary,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
+                Text(_summary),
                   
                   const SizedBox(height: 16),
                   
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
                       OutlinedButton.icon(
                         onPressed: () {
                           Clipboard.setData(ClipboardData(text: _summary)).then((_) {
                             ToastUtils.showSuccessToast('Summary copied to clipboard');
                           });
                         },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
                         icon: const Icon(Icons.copy, size: 16),
                         label: const Text('Copy Summary'),
                       ),
-                      
-                      TextButton.icon(
-                        onPressed: _generateSummary,
-                        icon: const Icon(Icons.refresh, size: 16),
-                        label: const Text('Regenerate'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+              ],
             ),
           ),
-          
-          const SizedBox(height: 24),
-          
-          if (!keyboardVisible) // Only show when keyboard is not visible
-            InkWell(
-              onTap: _switchToCommentMode,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(context).shadowColor.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-            ),
-          ],
         ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.comment,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Wanna comment on this post?',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(
-                      Icons.arrow_forward,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
+      ],
     );
   }
   
   Widget _buildTranslateContent() {
-    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-    
-    return SingleChildScrollView(
-      padding: EdgeInsets.only(bottom: keyboardVisible ? 200 : 32),
-      child: Column(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.translate, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Translate Post',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                      ),
+                  ),
+                ],
+              ),
+            TextButton.icon(
+              onPressed: () => setState(() => _selectedOption = ''),
+              icon: const Icon(Icons.arrow_back, size: 16),
+              label: const Text('Back'),
+          ),
+          ],
+        ),
+        
+        const SizedBox(height: 16),
+        
+        _buildLanguageDropdown(),
+        
+        const SizedBox(height: 16),
+        
+        _buildPostCard(),
+          
+          const SizedBox(height: 24),
+          
+        _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _translation.isNotEmpty
+            ? Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            radius: 16,
+                            child: const Icon(
+                              Icons.auto_awesome,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                    ),
+                    const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Translation to $_selectedLanguage',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    ),
+                  ],
+                ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      Text(_translation),
+                      
+                      const SizedBox(height: 16),
+                      
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: _translation)).then((_) {
+                            ToastUtils.showSuccessToast('Translation copied to clipboard');
+                          });
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: const Icon(Icons.copy, size: 16),
+                        label: const Text('Copy Translation'),
+            ),
+        ],
+      ),
+                ),
+              )
+            : const SizedBox.shrink(),
+      ],
+    );
+  }
+  
+  Widget _buildCommentContent() {
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
           Row(
@@ -1561,10 +1823,10 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
             children: [
               Row(
                 children: [
-                  Icon(Icons.translate, color: Theme.of(context).colorScheme.primary),
+                Icon(Icons.comment, color: Theme.of(context).colorScheme.primary),
                   const SizedBox(width: 8),
         Text(
-                    'Post Translation',
+                  'Generate Comment',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -1581,14 +1843,18 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
           
           const SizedBox(height: 16),
           
-          // Language selection dropdown
+        _buildPostCard(),
+        
+        const SizedBox(height: 24),
+        
+        // Comment tone selection
           Container(
             margin: const EdgeInsets.only(bottom: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Select Translation Language',
+                'Comment Tone',
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -1599,6 +1865,155 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                    value: _selectedCommentTone,
+                      icon: Icon(Icons.arrow_drop_down, color: Theme.of(context).colorScheme.onSurface),
+                    items: _availableCommentTones.map((String tone) {
+                        return DropdownMenuItem<String>(
+                        value: tone,
+                        child: Text(tone),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                          _selectedCommentTone = newValue;
+                          // Clear previous comment when tone changes
+                          _generatedComment = '';
+                          });
+                        }
+                      },
+                    ),
+                ),
+              ),
+            ],
+                  ),
+                ),
+                
+        // Generate comment button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+            onPressed: _isGeneratingComment ? null : _generateComment,
+            icon: _isGeneratingComment ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+            ) : const Icon(Icons.smart_toy),
+            label: Text(_isGeneratingComment ? 'Generating...' : 'Generate Comment'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+        ),
+        
+        // Only show generated comment if it's not empty
+        if (_generatedComment.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          
+          Card(
+            elevation: 2,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+              padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                      radius: 16,
+                        child: const Icon(
+                          Icons.comment,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                          'AI-Generated Comment',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  Text(_generatedComment),
+                  
+                  const SizedBox(height: 16),
+                  
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: _generatedComment)).then((_) {
+                            ToastUtils.showSuccessToast('Comment copied to clipboard');
+                          });
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: const Icon(Icons.copy, size: 16),
+                        label: const Text('Copy'),
+                      ),
+                      
+                      TextButton.icon(
+                        onPressed: _isGeneratingComment ? null : _generateComment,
+                        icon: const Icon(Icons.refresh, size: 16),
+                        label: const Text('Regenerate'),
+                ),
+              ],
+            ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // Helper method to build language dropdown
+  Widget _buildLanguageDropdown() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+                  Text(
+            'Select Translation Language',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+          
+          const SizedBox(height: 8),
+          
+            Row(
+              children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
                     border: Border.all(
                       color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
                     ),
@@ -1619,305 +2034,80 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
                         if (newValue != null) {
                           setState(() {
                             _selectedLanguage = newValue;
-                            _generateTranslation();
+                            // Clear previous translation when language changes
+                            _translation = '';
                           });
                         }
                       },
-                    ),
+                ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: keyboardVisible 
-                ? MediaQuery.of(context).size.height * 0.15 
-                : MediaQuery.of(context).size.height * 0.25,
-            ),
-            child: _buildPostCard(),
-          ),
-          
-          const SizedBox(height: 24),
-          
-          Card(
-            elevation: 2,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-              padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                      radius: 16,
-                        child: const Icon(
-                          Icons.translate,
-                          size: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                          'Translated Content (${_selectedLanguage})',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                  
-                  const SizedBox(height: 16),
-                  
-                Text(
-                    _translation,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          Clipboard.setData(ClipboardData(text: _translation)).then((_) {
-                            ToastUtils.showSuccessToast('Translation copied to clipboard');
-                          });
-                        },
-                        icon: const Icon(Icons.copy, size: 16),
-                        label: const Text('Copy Translation'),
-                      ),
-                      
-                      TextButton.icon(
-                        onPressed: _generateTranslation,
-                        icon: const Icon(Icons.refresh, size: 16),
-                        label: const Text('Regenerate'),
-                ),
-              ],
-            ),
-                ],
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 24),
-          
-          if (!keyboardVisible) // Only show when keyboard is not visible
-            InkWell(
-              onTap: _switchToCommentMode,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(context).shadowColor.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.comment,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Wanna comment on this post?',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(
-                      Icons.arrow_forward,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ],
                 ),
               ),
-            ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildCommentContent() {
-    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-    
-    return SingleChildScrollView(
-      padding: EdgeInsets.only(bottom: keyboardVisible ? 200 : 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.comment, color: Theme.of(context).colorScheme.primary),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Comment Options',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              TextButton.icon(
-                onPressed: () => setState(() => _selectedOption = ''),
-                icon: const Icon(Icons.arrow_back, size: 16),
-                label: const Text('Back'),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 16),
-          
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: keyboardVisible 
-                ? MediaQuery.of(context).size.height * 0.15 
-                : MediaQuery.of(context).size.height * 0.25,
-            ),
-            child: _buildPostCard(),
-          ),
-          
-          const SizedBox(height: 24),
-          
-          Text(
-            'AI Response Suggestions',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          _buildResponseOption(
-            title: 'Professional Response',
-            content: 'Thank you for sharing these insights. The points you\'ve raised are thought-provoking and align with what many industry experts are saying about this topic.',
-            icon: Icons.business,
-          ),
-          
-          const SizedBox(height: 12),
-          
-          _buildResponseOption(
-            title: 'Engaging Question',
-            content: 'This is fascinating! I\'m curious to know what specific aspects of this topic you think will have the biggest impact in the next few years?',
-            icon: Icons.question_answer,
-          ),
-          
-          const SizedBox(height: 12),
-          
-          _buildResponseOption(
-            title: 'Add Value',
-            content: 'Great points! I recently came across a related study that supports your perspective. It found that organizations implementing these strategies saw a 27% increase in overall performance. Would love to discuss this further.',
-            icon: Icons.add_chart,
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildResponseOption({
-    required String title,
-    required String content,
-    required IconData icon,
-  }) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                  radius: 16,
-                  child: Icon(
-                  icon,
-                  color: Theme.of(context).colorScheme.primary,
-                    size: 16,
-                ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 12),
-            
-            Text(
-              content,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            
-            const SizedBox(height: 12),
-            
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: content)).then((_) {
-                      ToastUtils.showSuccessToast('Response copied to clipboard');
-                    });
-                  },
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  icon: const Icon(Icons.copy, size: 16),
-                  label: const Text('Copy'),
-                ),
-                
-                const SizedBox(width: 8),
-                
+              const SizedBox(width: 12),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    // In a real app, this would open the LinkedIn app with the response pre-filled
-                    ToastUtils.showInfoToast('This would open LinkedIn with the response');
-                  },
+                onPressed: _selectedLanguage == 'Default' || _isLoading ? null : _generateTranslation,
+                icon: _isLoading ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ) : const Icon(Icons.translate, size: 16),
+                label: Text(_isLoading ? 'Translating...' : 'Translate'),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
-                  ),
-                  icon: const Icon(Icons.send, size: 16),
-                  label: const Text('Use'),
                 ),
               ],
             ),
           ],
-        ),
       ),
     );
+  }
+
+  // Generate a comment based on the post and selected tone
+  void _generateComment() {
+    if (_postContent.isEmpty) {
+      return;
+    }
+    
+    setState(() {
+      _isGeneratingComment = true;
+    });
+    
+    // Simulate API call delay
+    Future.delayed(const Duration(seconds: 2), () {
+      setState(() {
+        _isGeneratingComment = false;
+        
+        // Extract a short excerpt of the post content for the comment
+        String excerpt = _postContent.length > 30 ? _postContent.substring(0, 30) + '...' : _postContent;
+        
+        // Generate different comments based on the selected tone
+        switch (_selectedCommentTone) {
+          case 'Professional':
+            _generatedComment = "Thank you for sharing these valuable insights. Your points about $excerpt are particularly relevant in today's context. I appreciate your perspective on this topic.";
+            break;
+          case 'Friendly':
+            _generatedComment = "Love this post! The way you explained $excerpt really resonated with me. Thanks for sharing your thoughts on this!";
+            break;
+          case 'Enthusiastic':
+            _generatedComment = "Wow! This is exactly what I needed to read today! Your insights on $excerpt are absolutely game-changing. Can't wait to see more content like this!";
+            break;
+          case 'Thoughtful':
+            _generatedComment = "This post has given me a lot to reflect on. I've been considering the implications of $excerpt for some time, and your perspective adds a valuable dimension to the conversation.";
+            break;
+          case 'Questioning':
+            _generatedComment = "Interesting perspective. I'm curious to know more about how you arrived at these conclusions about $excerpt? Have you considered alternative viewpoints on this topic?";
+            break;
+          case 'Supportive':
+            _generatedComment = "I completely stand with you on this! Your points about $excerpt are spot-on and deserve more attention. Keep sharing these important insights!";
+            break;
+          default:
+            _generatedComment = "Thank you for sharing this thoughtful post. It provides valuable insights on an important topic.";
+        }
+      });
+      
+      ToastUtils.showSuccessToast('Comment generated successfully');
+    });
   }
 }
 

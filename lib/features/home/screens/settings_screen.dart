@@ -16,21 +16,19 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  String _selectedTheme = 'System Default';
   bool _notificationsEnabled = true;
-  bool _autoPostEnabled = false;
-  bool _dailyReminderEnabled = true;
+  bool _dailyReminderEnabled = false;
+  bool _autoStartEnabled = true;
   bool _savePostDrafts = true;
   bool _linkedInSyncEnabled = true;
   bool _commentSuggestionsEnabled = true;
   bool _postSuggestionsEnabled = true;
-  bool _analyticsEnabled = true;
-  String _language = 'English';
-  String _commentStyle = 'Professional';
-  String _postFrequency = 'Daily';
+  String _language = 'English (US)';
+  bool _isOverlayServiceEnabled = false;
   
   // Define state variables for loading states
   bool _isRefreshingLinkedIn = false;
-  bool _isExporting = false;
   bool _isClearingCache = false;
   bool _isDeletingAccount = false;
   bool _isReconnectingLinkedIn = false;
@@ -50,32 +48,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
-      _autoPostEnabled = prefs.getBool('auto_post_enabled') ?? false;
-      _dailyReminderEnabled = prefs.getBool('daily_reminder_enabled') ?? true;
+      _dailyReminderEnabled = prefs.getBool('daily_reminder_enabled') ?? false;
+      _autoStartEnabled = prefs.getBool('auto_post_enabled') ?? true;
       _savePostDrafts = prefs.getBool('save_post_drafts') ?? true;
       _linkedInSyncEnabled = prefs.getBool('linkedin_sync_enabled') ?? true;
       _commentSuggestionsEnabled = prefs.getBool('comment_suggestions_enabled') ?? true;
       _postSuggestionsEnabled = prefs.getBool('post_suggestions_enabled') ?? true;
-      _analyticsEnabled = prefs.getBool('analytics_enabled') ?? true;
-      _language = prefs.getString('language') ?? 'English';
-      _commentStyle = prefs.getString('comment_style') ?? 'Professional';
-      _postFrequency = prefs.getString('post_frequency') ?? 'Daily';
+      _language = prefs.getString('language') ?? 'English (US)';
+      _isOverlayServiceEnabled = prefs.getBool('overlay_service_enabled') ?? false;
     });
   }
   
   Future<void> _saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notifications_enabled', _notificationsEnabled);
-    await prefs.setBool('auto_post_enabled', _autoPostEnabled);
     await prefs.setBool('daily_reminder_enabled', _dailyReminderEnabled);
+    await prefs.setBool('auto_post_enabled', _autoStartEnabled);
     await prefs.setBool('save_post_drafts', _savePostDrafts);
     await prefs.setBool('linkedin_sync_enabled', _linkedInSyncEnabled);
     await prefs.setBool('comment_suggestions_enabled', _commentSuggestionsEnabled);
     await prefs.setBool('post_suggestions_enabled', _postSuggestionsEnabled);
-    await prefs.setBool('analytics_enabled', _analyticsEnabled);
     await prefs.setString('language', _language);
-    await prefs.setString('comment_style', _commentStyle);
-    await prefs.setString('post_frequency', _postFrequency);
+    await prefs.setBool('overlay_service_enabled', _isOverlayServiceEnabled);
   }
 
   @override
@@ -89,6 +83,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         showBackButton: true,
         showDrawerButton: false,
         centerTitle: false,
+        showSettingsButton: false,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
@@ -135,7 +130,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _buildSectionHeader('AI Assistant'),
           ListTile(
             title: const Text('Comment Style'),
-            subtitle: Text(_commentStyle),
+            subtitle: Text(_language),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () => _showCommentStyleDialog(),
           ),
@@ -163,7 +158,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           ListTile(
             title: const Text('Post Frequency'),
-            subtitle: Text(_postFrequency),
+            subtitle: Text(_language),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () => _showPostFrequencyDialog(),
           ),
@@ -214,29 +209,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const Divider(),
           
-          // Analytics Settings
-          _buildSectionHeader('Analytics'),
-          SwitchListTile(
-            title: const Text('Enable Analytics'),
-            subtitle: const Text('Track your LinkedIn engagement metrics'),
-            value: _analyticsEnabled,
-            onChanged: (value) {
-              setState(() {
-                _analyticsEnabled = value;
-                _saveSettings();
-              });
-            },
-          ),
-          ListTile(
-            title: const Text('Export Analytics Data'),
-            subtitle: const Text('Download your engagement metrics'),
-            trailing: const Icon(Icons.download),
-            onTap: () {
-              _exportAnalyticsData();
-            },
-          ),
-          const Divider(),
-          
           // Accessibility & Overlay Features
           _buildSectionHeader('Accessibility & Overlay'),
           const OverlayControl(),
@@ -258,14 +230,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: const Text('Privacy Policy'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              // Navigate to privacy policy
+              context.push('/privacy-policy');
             },
           ),
           ListTile(
             title: const Text('Terms of Service'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              // Navigate to terms of service
+              context.push('/terms-of-service');
             },
           ),
           ListTile(
@@ -366,9 +338,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           title: const Text('Light'),
           value: ThemeMode.light,
           groupValue: currentTheme,
-          onChanged: (value) {
-            if (value != null) {
-              themeNotifier.setTheme(value);
+          onChanged: (value) async {
+            if (value != null && value != currentTheme) {
+              final shouldRestart = await themeNotifier.showThemeChangeDialog(context, value);
+              if (shouldRestart && mounted) {
+                _restartApp();
+              }
             }
           },
         ),
@@ -376,9 +351,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           title: const Text('Dark'),
           value: ThemeMode.dark,
           groupValue: currentTheme,
-          onChanged: (value) {
-            if (value != null) {
-              themeNotifier.setTheme(value);
+          onChanged: (value) async {
+            if (value != null && value != currentTheme) {
+              final shouldRestart = await themeNotifier.showThemeChangeDialog(context, value);
+              if (shouldRestart && mounted) {
+                _restartApp();
+              }
             }
           },
         ),
@@ -386,9 +364,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           title: const Text('System Default'),
           value: ThemeMode.system,
           groupValue: currentTheme,
-          onChanged: (value) {
-            if (value != null) {
-              themeNotifier.setTheme(value);
+          onChanged: (value) async {
+            if (value != null && value != currentTheme) {
+              final shouldRestart = await themeNotifier.showThemeChangeDialog(context, value);
+              if (shouldRestart && mounted) {
+                _restartApp();
+              }
             }
           },
         ),
@@ -498,11 +479,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               title: const Text('Professional'),
               subtitle: const Text('Formal and business-oriented'),
               value: 'Professional',
-              groupValue: _commentStyle,
+              groupValue: _language,
               onChanged: (value) {
                 if (value != null) {
                   setState(() {
-                    _commentStyle = value;
+                    _language = value;
                     _saveSettings();
                   });
                   Navigator.pop(context);
@@ -513,11 +494,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               title: const Text('Casual'),
               subtitle: const Text('Friendly and conversational'),
               value: 'Casual',
-              groupValue: _commentStyle,
+              groupValue: _language,
               onChanged: (value) {
                 if (value != null) {
                   setState(() {
-                    _commentStyle = value;
+                    _language = value;
                     _saveSettings();
                   });
                   Navigator.pop(context);
@@ -528,11 +509,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               title: const Text('Expert'),
               subtitle: const Text('Authoritative and insightful'),
               value: 'Expert',
-              groupValue: _commentStyle,
+              groupValue: _language,
               onChanged: (value) {
                 if (value != null) {
                   setState(() {
-                    _commentStyle = value;
+                    _language = value;
                     _saveSettings();
                   });
                   Navigator.pop(context);
@@ -543,11 +524,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               title: const Text('Supportive'),
               subtitle: const Text('Encouraging and positive'),
               value: 'Supportive',
-              groupValue: _commentStyle,
+              groupValue: _language,
               onChanged: (value) {
                 if (value != null) {
                   setState(() {
-                    _commentStyle = value;
+                    _language = value;
                     _saveSettings();
                   });
                   Navigator.pop(context);
@@ -577,11 +558,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             RadioListTile<String>(
               title: const Text('Daily'),
               value: 'Daily',
-              groupValue: _postFrequency,
+              groupValue: _language,
               onChanged: (value) {
                 if (value != null) {
                   setState(() {
-                    _postFrequency = value;
+                    _language = value;
                     _saveSettings();
                   });
                   Navigator.pop(context);
@@ -591,11 +572,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             RadioListTile<String>(
               title: const Text('Weekly'),
               value: 'Weekly',
-              groupValue: _postFrequency,
+              groupValue: _language,
               onChanged: (value) {
                 if (value != null) {
                   setState(() {
-                    _postFrequency = value;
+                    _language = value;
                     _saveSettings();
                   });
                   Navigator.pop(context);
@@ -605,11 +586,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             RadioListTile<String>(
               title: const Text('Bi-Weekly'),
               value: 'Bi-Weekly',
-              groupValue: _postFrequency,
+              groupValue: _language,
               onChanged: (value) {
                 if (value != null) {
                   setState(() {
-                    _postFrequency = value;
+                    _language = value;
                     _saveSettings();
                   });
                   Navigator.pop(context);
@@ -619,11 +600,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             RadioListTile<String>(
               title: const Text('Monthly'),
               value: 'Monthly',
-              groupValue: _postFrequency,
+              groupValue: _language,
               onChanged: (value) {
                 if (value != null) {
                   setState(() {
-                    _postFrequency = value;
+                    _language = value;
                     _saveSettings();
                   });
                   Navigator.pop(context);
@@ -790,21 +771,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     });
   }
   
-  void _exportAnalyticsData() {
-    // Simulate export functionality
-    setState(() {
-      _isExporting = true;
-    });
-    
-    // Simulate export process
-    Future.delayed(const Duration(seconds: 1), () {
-      setState(() {
-        _isExporting = false;
-      });
-      
-      ToastUtils.showSuccessToast('Analytics data export started');
-    });
-  }
+
   
   void _clearCache() {
     // Simulate clearing cache
@@ -897,5 +864,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       
       ToastUtils.showSuccessToast('LinkedIn account updated');
     });
+  }
+  
+  // Method to restart the app
+  void _restartApp() {
+    // Perform any cleanup needed before restart
+    
+    // Navigate to initial route to simulate a restart
+    if (mounted) {
+      context.go(AppConstants.homeRoute);
+    }
   }
 } 

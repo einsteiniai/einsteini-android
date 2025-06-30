@@ -1,10 +1,38 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'package:einsteiniapp/core/services/api_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 /// Utility class to handle platform-specific operations
 class PlatformChannel {
   static const MethodChannel _channel = MethodChannel('com.einsteini.ai/settings');
-  static const MethodChannel _scraperChannel = MethodChannel('com.einsteini.ai/scraper');
+  static const MethodChannel _overlayChannel = MethodChannel('com.einsteini.ai/overlay');
+  static final ApiService _apiService = ApiService();
+  
+  // Callback for when content is scraped from the overlay
+  static Function(Map<String, dynamic>)? onContentScraped;
+  
+  // Initialize the platform channel
+  static void init() {
+    _overlayChannel.setMethodCallHandler(_handleMethodCall);
+  }
+  
+  // Handle method calls from the platform
+  static Future<dynamic> _handleMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 'onContentScraped':
+        if (onContentScraped != null) {
+          final Map<String, dynamic> content = Map<String, dynamic>.from(call.arguments);
+          onContentScraped!(content);
+        }
+        return null;
+      default:
+        throw PlatformException(
+          code: 'Unimplemented',
+          details: 'Method ${call.method} not implemented',
+        );
+    }
+  }
 
   /// Opens specific system settings pages on Android
   static Future<void> openSystemSettings(String action) async {
@@ -19,7 +47,23 @@ class PlatformChannel {
   /// Opens specific settings pages using Android intent actions
   static Future<void> openOverlayPermissionSettings() async {
     if (Platform.isAndroid) {
-      await openSystemSettings('android.settings.MANAGE_OVERLAY_PERMISSION');
+      try {
+        print('Opening overlay permission settings...');
+        await openSystemSettings('android.settings.MANAGE_OVERLAY_PERMISSION');
+        print('Overlay permission settings opened successfully');
+      } on PlatformException catch (e) {
+        print('Failed to open overlay permission settings: ${e.message}');
+        print('Error details: ${e.details}');
+        // Try one more approach via permission_handler package as fallback
+        try {
+          await openAppSettings();
+          print('Opened app settings as fallback');
+        } catch (e2) {
+          print('All attempts to open settings failed: $e2');
+        }
+      } catch (e) {
+        print('Unexpected error opening overlay settings: $e');
+      }
     }
   }
 
@@ -52,49 +96,18 @@ class PlatformChannel {
     }
   }
   
-  /// Scrape a LinkedIn post using JSoup on Android
+  /// Scrape a LinkedIn post using the backend API
   static Future<Map<String, dynamic>> scrapeLinkedInPost(String url) async {
-    if (!Platform.isAndroid) {
-      return {
-        'content': 'LinkedIn scraping is only supported on Android devices',
-        'author': 'System',
-        'date': 'Now',
-        'likes': 0,
-        'comments': 0,
-        'images': <String>[],
-        'commentsList': <Map<String, String>>[]
-      };
-    }
-    
     try {
-      final result = await _scraperChannel.invokeMethod('scrapeLinkedInPost', {'url': url});
+      // Initialize the API service if needed
+      await _apiService.init();
       
-      // Process the comments list
-      List<Map<String, String>> commentsList = [];
-      if (result['commentsList'] != null) {
-        final rawComments = result['commentsList'] as List<dynamic>;
-        commentsList = rawComments.map((comment) {
-          return {
-            'author': comment['author'] as String? ?? 'Unknown',
-            'text': comment['text'] as String? ?? ''
-          };
-        }).toList();
-      }
-      
-      // Convert the result to the expected format
+      // Use the API service to scrape the LinkedIn post
+      return await _apiService.scrapeLinkedInPost(url);
+    } catch (e) {
+      print('Failed to scrape LinkedIn post: $e');
       return {
-        'content': result['content'] ?? 'No content found',
-        'author': result['author'] ?? 'Unknown author',
-        'date': result['date'] ?? 'Unknown date',
-        'likes': result['likes'] ?? 0,
-        'comments': result['comments'] ?? 0,
-        'images': (result['images'] as List<dynamic>?)?.cast<String>() ?? <String>[],
-        'commentsList': commentsList
-      };
-    } on PlatformException catch (e) {
-      print('Failed to scrape LinkedIn post: ${e.message}');
-      return {
-        'content': 'Failed to scrape LinkedIn post: ${e.message}',
+        'content': 'Failed to scrape LinkedIn post: $e',
         'author': 'Error',
         'date': 'Now',
         'likes': 0,
@@ -102,6 +115,28 @@ class PlatformChannel {
         'images': <String>[],
         'commentsList': <Map<String, String>>[]
       };
+    }
+  }
+  
+  /// Show the overlay
+  static Future<bool> showOverlay() async {
+    try {
+      final bool success = await _overlayChannel.invokeMethod('showOverlay');
+      return success;
+    } on PlatformException catch (e) {
+      print('Failed to show overlay: ${e.message}');
+      return false;
+    }
+  }
+  
+  /// Hide the overlay
+  static Future<bool> hideOverlay() async {
+    try {
+      final bool success = await _overlayChannel.invokeMethod('hideOverlay');
+      return success;
+    } on PlatformException catch (e) {
+      print('Failed to hide overlay: ${e.message}');
+      return false;
     }
   }
 } 

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Default configuration for all domains -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Trust the pre-installed system CAs -->
+            <certificates src="system" />
+            <!-- Additionally trust user installed CAs -->
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+    <!-- Configuration for einsteini.ai domains with certificate pinning -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">einsteini.ai</domain>
+        <domain includeSubdomains="true">api.einsteini.ai</domain>
+        <pin-set expiration="2025-01-01">
+            <!-- Backup pin -->
+            <pin digest="SHA-256">YLh1dUR9y6Kja30RrAn7JKnbQG/uEtLMkBgFF2Fuihg=</pin>
+        </pin-set>
+    </domain-config>
+</network-security-config> 

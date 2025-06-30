@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:go_router/go_router.dart';
+import 'package:einsteiniapp/core/routes/app_router.dart' as router;
 import 'platform_channel.dart';
 
 enum AppPermission {
@@ -42,6 +44,35 @@ class PermissionUtils {
     }
   }
   
+  // Show a dialog explaining how to enable the overlay permission if the settings don't open directly
+  static void showOverlayPermissionInstructions(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enable Display Over Other Apps'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('If settings don\'t open automatically, please follow these steps:'),
+            SizedBox(height: 8),
+            Text('1. Open your device Settings'),
+            Text('2. Go to Apps or Application Manager'),
+            Text('3. Find and tap on einsteini.ai'),
+            Text('4. Tap on "Display over other apps"'),
+            Text('5. Enable the permission for einsteini.ai'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+  }
+  
   static Future<bool> checkAccessibilityPermission() async {
     // This is more complex and platform-specific
     // Usually requires the user to manually enable in settings
@@ -60,6 +91,165 @@ class PermissionUtils {
     }
   }
   
+  // Show a dialog explaining the accessibility permission similar to Grammarly
+  static void showAccessibilityPermissionExplanation(BuildContext context, {
+    required VoidCallback onAgree,
+    required VoidCallback onDisagree,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        backgroundColor: isDark ? Colors.black : Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'einsteini.ai - LinkedIn Assistant',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Switch(
+                    value: false,
+                    onChanged: null,
+                    activeColor: Theme.of(context).colorScheme.primary,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
+              Text(
+                'Options',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'einsteini.ai - LinkedIn Assistant shortcut',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Disable',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: false,
+                    onChanged: null,
+                    activeColor: Theme.of(context).colorScheme.primary,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Settings',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'einsteini.ai uses the Android Accessibility service to process LinkedIn content and provide you with AI-powered writing suggestions. To provide you with an optimized product, we also access some additional information, such as the type of content you\'re viewing. We don\'t and will not sell your data.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'einsteini.ai uses the following Accessibility capabilities:',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Retrieve LinkedIn content:',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'This is required for einsteini.ai to provide intelligent content suggestions for LinkedIn posts and comments.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Detect window changed:',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'This is required to turn einsteini.ai on or off when you\'re browsing different sections of LinkedIn.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Enabling the shortcut toggle on this screen is NOT required.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: onDisagree,
+                    child: Text(
+                      'Disagree',
+                      style: TextStyle(
+                        color: isDark ? Colors.grey[400] : Colors.grey[700],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  TextButton(
+                    onPressed: onAgree,
+                    child: Text(
+                      'Agree',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
   static Future<void> setPermissionGranted(AppPermission permission, bool granted) async {
     final prefs = await SharedPreferences.getInstance();
     switch (permission) {
@@ -73,12 +263,44 @@ class PermissionUtils {
   }
   
   static Future<bool> checkPermissionGranted(AppPermission permission) async {
-    final prefs = await SharedPreferences.getInstance();
     switch (permission) {
       case AppPermission.overlay:
-        return prefs.getBool('overlay_granted') ?? false;
+        return await checkOverlayPermission();
       case AppPermission.accessibility:
-        return prefs.getBool('accessibility_granted') ?? false;
+        return await checkAccessibilityPermission();
+    }
+  }
+  
+  static Future<bool> requestPermission(BuildContext context, AppPermission permission) async {
+    switch (permission) {
+      case AppPermission.overlay:
+        final isGranted = await requestOverlayPermission();
+        if (!isGranted) {
+          await openOverlaySettings();
+          showOverlayPermissionInstructions(context);
+          return false;
+        }
+        return true;
+        
+      case AppPermission.accessibility:
+        await openAccessibilitySettings();
+        return false; // We can't programmatically determine if accessibility was granted
+    }
+  }
+  
+  static Future<bool> toggleOverlay(bool enable) async {
+    try {
+      if (enable) {
+        // Start the overlay service
+        await PlatformChannel.showOverlay();
+      } else {
+        // Stop the overlay service
+        await PlatformChannel.hideOverlay();
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error toggling overlay: $e');
+      return false;
     }
   }
   

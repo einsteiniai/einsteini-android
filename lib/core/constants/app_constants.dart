@@ -3,7 +3,7 @@ class AppConstants {
   // App Info
   static const String appName = 'einsteini.ai';
   static const String appDescription = 'LinkedIn engagement assistant powered by AI';
-  static const String appVersion = '1.0.0';
+  static const String appVersion = '1.0.1';
   static const String appTagline = 'Effortlessly human.';
   
   // Routes
@@ -54,7 +54,7 @@ class AppConstants {
   static const String termsText = 'By continuing, you agree to our Terms of Service and Privacy Policy.';
   
   // Platform channel names
-  static const String platformChannelName = 'com.example.einsteiniapp/platform';
+  static const String platformChannelName = 'com.einsteini.app/platform';
   static const String accessibilityServiceMethod = 'checkAccessibilityService';
   static const String overlayPermissionMethod = 'checkOverlayPermission';
   static const String requestOverlayPermissionMethod = 'requestOverlayPermission';

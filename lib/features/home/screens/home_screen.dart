@@ -11,6 +11,7 @@ import 'package:einsteiniapp/core/widgets/permission_reminder_box.dart';
 import 'package:einsteiniapp/features/home/widgets/ai_assistant_tab.dart';
 import 'package:einsteiniapp/features/home/widgets/history_tab.dart';
 import 'package:einsteiniapp/core/services/history_service.dart';
+import 'package:einsteiniapp/core/services/api_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -25,6 +26,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   String _userEmail = 'user@example.com';
   bool _showOverlayPermissionBox = false;
   bool _showAccessibilityPermissionBox = false;
+  bool _overlayEnabled = false;
+  
+  // Subscription information
+  String _subscriptionStatus = 'inactive';
+  String _subscriptionPlan = 'Free';
+  int _commentsRemaining = 0;
+  int _daysRemaining = 0;
+  bool _loadingSubscription = true;
   
   // Store recent activity from history
   List<AnalyzedPost> _recentActivity = [];
@@ -36,15 +45,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   // TabController for managing tabs
   late TabController _tabController;
   
+  // API Service
+  final ApiService _apiService = ApiService();
+  
   @override
   void initState() {
     super.initState();
     _loadUserData();
     _checkPermissions();
     _loadRecentActivity();
+    _loadSubscriptionInfo();
+    _loadOverlayState();
     
     // Initialize tab controller
-    _tabController = TabController(length: 4, vsync: this, initialIndex: _selectedIndex);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: _selectedIndex);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         setState(() {
@@ -66,6 +80,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
       _userName = prefs.getString('user_name') ?? 'LinkedIn User';
       _userEmail = prefs.getString('user_email') ?? 'user@example.com';
     });
+  }
+  
+  Future<void> _loadSubscriptionInfo() async {
+    try {
+      final subscription = await _apiService.getSubscriptionStatus();
+      final commentsCount = await _apiService.getNumberOfComments();
+      
+      setState(() {
+        _subscriptionStatus = subscription['status'] ?? 'inactive';
+        _subscriptionPlan = subscription['product'] ?? 'Free';
+        _commentsRemaining = commentsCount;
+        _daysRemaining = subscription['daysleft'] ?? 0;
+        _loadingSubscription = false;
+      });
+      
+      debugPrint('Comments remaining: $_commentsRemaining');
+    } catch (e) {
+      print('Error loading subscription info: $e');
+      setState(() {
+        _loadingSubscription = false;
+      });
+    }
   }
 
   Future<void> _checkPermissions() async {
@@ -122,6 +158,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     }
   }
 
+  Future<void> _loadOverlayState() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _overlayEnabled = prefs.getBool('overlay_enabled') ?? false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -143,7 +186,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           _buildHomeTab(),
           HistoryTab(onReanalyzePost: _handleReanalyzePost),
           AIAssistantTab(key: _aiAssistantTabKey),
-          _buildAnalyticsTab(),
         ],
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
@@ -159,8 +201,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         return 'History';
       case 2:
         return 'AI Assistant';
-      case 3:
-        return 'Analytics';
       default:
         return 'einsteini.ai';
     }
@@ -259,18 +299,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
               Navigator.pop(context);
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.bar_chart),
-            title: const Text('Analytics'),
-            selected: _selectedIndex == 3,
-            onTap: () {
-              setState(() {
-                _selectedIndex = 3;
-              });
-              _tabController.animateTo(3);
-              Navigator.pop(context);
-            },
-          ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.person_outline),
@@ -298,7 +326,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           ),
           const Padding(
             padding: EdgeInsets.only(bottom: 16.0),
-            child: Text('Version 1.0.0'),
+            child: Text('Version 1.0.1'),
           ),
         ],
       ),
@@ -392,35 +420,109 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
               ],
             ),
             const SizedBox(height: 20),
+            _buildSubscriptionInfo(),
+            const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
                   child: _buildStatCard(
                     icon: Icons.comment,
-                    title: 'Comments',
-                    value: '24',
+                    title: 'Comments Left',
+                    value: _loadingSubscription ? '...' : '$_commentsRemaining',
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: _buildStatCard(
-                    icon: Icons.thumb_up,
-                    title: 'Likes',
-                    value: '142',
+                    icon: Icons.auto_awesome,
+                    title: 'Plan',
+                    value: _loadingSubscription ? '...' : _subscriptionPlan,
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: _buildStatCard(
-                    icon: Icons.visibility,
-                    title: 'Views',
-                    value: '1.2K',
+                    icon: Icons.event_available,
+                    title: 'Days Left',
+                    value: _loadingSubscription ? '...' : '$_daysRemaining',
                   ),
                 ),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+  
+  Widget _buildSubscriptionInfo() {
+    if (_loadingSubscription) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+    
+    Color statusColor;
+    IconData statusIcon;
+    String statusText;
+    
+    switch (_subscriptionStatus) {
+      case 'active':
+        statusColor = Colors.green;
+        statusIcon = Icons.check_circle;
+        statusText = 'Active Subscription';
+        break;
+      case 'trialing':
+        statusColor = Colors.blue;
+        statusIcon = Icons.access_time;
+        statusText = 'Free Trial';
+        break;
+      default:
+        statusColor = Colors.red;
+        statusIcon = Icons.error;
+        statusText = 'Inactive Subscription';
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: statusColor.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            statusIcon,
+            color: statusColor,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            statusText,
+            style: TextStyle(
+              color: statusColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const Spacer(),
+          if (_subscriptionStatus != 'active')
+            TextButton(
+              onPressed: () {
+                // Open subscription page or show upgrade dialog
+              },
+              style: TextButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                minimumSize: const Size(80, 30),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              child: const Text('Upgrade'),
+            ),
+        ],
       ),
     );
   }
@@ -609,20 +711,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           children: [
             Expanded(
               child: _buildQuickActionCard(
-                icon: Icons.post_add,
-                title: 'Create Post',
+                icon: Icons.search_outlined,
+                title: 'Analyze Post',
                 onTap: () {
-                  // Create post action
+                  setState(() {
+                    _selectedIndex = 2;
+                  });
+                  _tabController.animateTo(2);
                 },
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: _buildQuickActionCard(
-                icon: Icons.comment,
-                title: 'Write Comment',
+                icon: Icons.post_add,
+                title: 'Create Post',
                 onTap: () {
-                  // Write comment action
+                  setState(() {
+                    _selectedIndex = 2;
+                  });
+                  _tabController.animateTo(2);
+                  // Navigate to Create Post tab
+                  if (_aiAssistantTabKey.currentState != null) {
+                    _aiAssistantTabKey.currentState!.setTabIndex(1);
+                  }
                 },
               ),
             ),
@@ -633,28 +745,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           children: [
             Expanded(
               child: _buildQuickActionCard(
-                icon: Icons.auto_awesome,
-                title: 'AI Suggestions',
+                icon: Icons.person_outline,
+                title: 'About Me',
                 onTap: () {
-                  // AI suggestions action
                   setState(() {
                     _selectedIndex = 2;
                   });
+                  _tabController.animateTo(2);
+                  // Navigate to About Me tab
+                  if (_aiAssistantTabKey.currentState != null) {
+                    _aiAssistantTabKey.currentState!.setTabIndex(2);
+                  }
                 },
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _buildQuickActionCard(
-                icon: Icons.analytics,
-                title: 'View Analytics',
-                onTap: () {
-                  // View analytics action
-                  setState(() {
-                    _selectedIndex = 3;
-                  });
-                },
-              ),
+              child: _buildOverlayToggleCard(),
             ),
           ],
         ),
@@ -675,7 +782,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Padding(
+        child: Container(
+          height: 160,
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -693,11 +801,76 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                   fontWeight: FontWeight.w500,
                 ),
               ),
+              const SizedBox(height: 40),
             ],
           ),
         ),
       ),
     );
+  }
+  
+  Widget _buildOverlayToggleCard() {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Container(
+        height: 160,
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              _overlayEnabled ? Icons.visibility : Icons.visibility_off,
+              size: 32,
+              color: _overlayEnabled 
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Overlay',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Switch(
+              value: _overlayEnabled,
+              onChanged: _toggleOverlay,
+              activeColor: Theme.of(context).colorScheme.primary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  void _toggleOverlay(bool value) async {
+    if (!await PermissionUtils.checkPermissionGranted(AppPermission.overlay)) {
+      // Request overlay permission if not granted
+      await PermissionUtils.requestPermission(context, AppPermission.overlay);
+      return;
+    }
+    
+    setState(() {
+      _overlayEnabled = value;
+    });
+    
+    // Save preference
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setBool('overlay_enabled', value);
+    
+    // Toggle overlay via platform channel
+    final bool success = await PermissionUtils.toggleOverlay(value);
+    
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to toggle overlay')),
+      );
+    }
   }
   
   Widget _buildTipsSection() {
@@ -756,48 +929,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     );
   }
   
-  Widget _buildAnalyticsTab() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.bar_chart,
-            size: 64,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Analytics',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Text(
-              'Track your LinkedIn engagement metrics and growth over time.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: () {
-              // View detailed analytics
-            },
-            icon: const Icon(Icons.analytics),
-            label: const Text('View Detailed Analytics'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
   Widget _buildBottomNavigationBar() {
     return Container(
       decoration: BoxDecoration(
@@ -834,11 +965,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             icon: Icon(Icons.auto_awesome_outlined),
             activeIcon: Icon(Icons.auto_awesome),
             label: 'AI Assistant',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart_outlined),
-            activeIcon: Icon(Icons.bar_chart),
-            label: 'Analytics',
           ),
         ],
         onTap: (index) {
