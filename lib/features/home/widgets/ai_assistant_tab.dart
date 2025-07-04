@@ -16,34 +16,39 @@ class AIAssistantTab extends StatefulWidget {
 }
 
 class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProviderStateMixin {
-  // Variables for the AI assistant tab
+  // Tab controller
   late TabController _tabController;
+  
+  // Link input controller
   final TextEditingController _linkController = TextEditingController();
+  
+  // Post creation controllers
   final TextEditingController _postTopicController = TextEditingController();
   final TextEditingController _postToneController = TextEditingController();
   final TextEditingController _postLengthController = TextEditingController();
+  
+  // Summary controller
+  final TextEditingController _summaryTypeController = TextEditingController();
+  
+  // Translation controller
+  final TextEditingController _translationLanguageController = TextEditingController();
+  
+  // Comment controller
+  final TextEditingController _commentToneController = TextEditingController();
+  
+  // About Me controllers
   final TextEditingController _industryController = TextEditingController();
   final TextEditingController _experienceController = TextEditingController();
   final TextEditingController _skillsController = TextEditingController();
   final TextEditingController _goalController = TextEditingController();
+  final TextEditingController _aboutToneController = TextEditingController();
   
   // State variables
   bool _isLoading = false;
   bool _hasAnalyzedContent = false;
-  bool _isGeneratingPost = false;
-  bool _isGeneratingAboutMe = false;
-  bool _isGeneratingComment = false;
   String _errorMessage = '';
-  String _selectedOption = '';
-  String _selectedLanguage = 'Default';
-  String _selectedCommentTone = 'Professional';
-  String _summary = '';
-  String _translation = '';
-  String _generatedPost = '';
-  String _generatedAboutMe = '';
-  String _generatedComment = '';
   
-  // Post data
+  // Post content
   String _postContent = '';
   String _postAuthor = '';
   String _postDate = '';
@@ -53,30 +58,27 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
   List<String> _postImages = [];
   List<Map<String, String>> _commentsList = [];
   
-  // Available languages for translation
-  final List<String> _availableLanguages = [
-    'Default',
-    'Spanish',
-    'French',
-    'German',
-    'Italian',
-    'Portuguese',
-    'Russian',
-    'Chinese',
-    'Japanese',
-    'Korean',
-    'Arabic',
-    'Hindi',
+  // Generated content
+  String _selectedOption = '';
+  String _summary = '';
+  String _translation = '';
+  String _generatedComment = '';
+  String _generatedPost = '';
+  String _generatedAboutMe = '';
+  
+  // Generation states
+  bool _isGeneratingComment = false;
+  bool _isGeneratingPost = false;
+  bool _isGeneratingAboutMe = false;
+  
+  // Lists of options
+  static const List<String> _availableLanguages = [
+    'Default', 'English', 'Spanish', 'French', 'German', 'Chinese', 'Japanese',
+    'Russian', 'Arabic', 'Portuguese', 'Italian', 'Hindi', 'Dutch'
   ];
   
-  // Available comment tones
-  final List<String> _availableCommentTones = [
-    'Professional',
-    'Friendly',
-    'Enthusiastic',
-    'Thoughtful',
-    'Questioning',
-    'Supportive',
+  static const List<String> _availableCommentTones = [
+    'Professional', 'Friendly', 'Enthusiastic', 'Thoughtful', 'Questioning', 'Supportive'
   ];
   
   @override
@@ -90,6 +92,11 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
     // Set some default values
     _postToneController.text = 'Professional';
     _postLengthController.text = 'Medium';
+    
+    // Set default values for new controllers
+    _summaryTypeController.text = 'Concise';
+    _translationLanguageController.text = 'English';
+    _commentToneController.text = 'Professional';
   }
   
   @override
@@ -104,6 +111,10 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
     _experienceController.dispose();
     _skillsController.dispose();
     _goalController.dispose();
+    _summaryTypeController.dispose();
+    _translationLanguageController.dispose();
+    _commentToneController.dispose();
+    _aboutToneController.dispose();
     super.dispose();
   }
   
@@ -165,14 +176,8 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
           _postContent = 'Unable to retrieve LinkedIn post content. This may be due to LinkedIn\'s security measures or the post\'s privacy settings.';
         }
         
-        // Generate summary if summarize option is selected
-        if (_selectedOption == 'summarize') {
-          _generateSummary();
-        }
-        // Generate translation if translate option is selected
-        else if (_selectedOption == 'translate') {
-          _generateTranslation();
-        }
+        // Don't automatically generate summary or translation
+        // Just navigate to the selected option screen
       });
       
       // Save to history
@@ -210,12 +215,100 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
         comments: _comments,
         images: _postImages,
         commentsList: _commentsList,
+        functionality: 'analyze', // Default functionality is analysis
       );
       
       // Save to history
       await HistoryService.savePost(analyzedPost);
     } catch (e) {
       print('Error saving to history: $e');
+    }
+  }
+  
+  // Save to history with summary functionality
+  void _saveToHistoryWithSummary() async {
+    try {
+      // Generate a title from the content
+      final title = AnalyzedPost.generateTitleFromContent(_postContent);
+      
+      // Create an analyzed post object with summary functionality
+      final analyzedPost = AnalyzedPost(
+        id: const Uuid().v4(),
+        title: title,
+        content: _postContent,
+        author: _postAuthor,
+        date: _postDate,
+        analyzedAt: DateTime.now().toIso8601String(),
+        postUrl: _postUrl,
+        likes: _likes,
+        comments: _comments,
+        images: _postImages,
+        commentsList: _commentsList,
+        functionality: 'summary: ${_summaryTypeController.text}', // Specify summary type
+      );
+      
+      // Save to history
+      await HistoryService.savePost(analyzedPost);
+    } catch (e) {
+      print('Error saving summary to history: $e');
+    }
+  }
+  
+  // Save to history with translation functionality
+  void _saveToHistoryWithTranslation() async {
+    try {
+      // Generate a title from the content
+      final title = AnalyzedPost.generateTitleFromContent(_postContent);
+      
+      // Create an analyzed post object with translation functionality
+      final analyzedPost = AnalyzedPost(
+        id: const Uuid().v4(),
+        title: title,
+        content: _postContent,
+        author: _postAuthor,
+        date: _postDate,
+        analyzedAt: DateTime.now().toIso8601String(),
+        postUrl: _postUrl,
+        likes: _likes,
+        comments: _comments,
+        images: _postImages,
+        commentsList: _commentsList,
+        functionality: 'translate: ${_translationLanguageController.text}', // Specify language
+      );
+      
+      // Save to history
+      await HistoryService.savePost(analyzedPost);
+    } catch (e) {
+      print('Error saving translation to history: $e');
+    }
+  }
+  
+  // Save to history with comment functionality
+  void _saveToHistoryWithComment() async {
+    try {
+      // Generate a title from the content
+      final title = AnalyzedPost.generateTitleFromContent(_postContent);
+      
+      // Create an analyzed post object with comment functionality
+      final analyzedPost = AnalyzedPost(
+        id: const Uuid().v4(),
+        title: title,
+        content: _postContent,
+        author: _postAuthor,
+        date: _postDate,
+        analyzedAt: DateTime.now().toIso8601String(),
+        postUrl: _postUrl,
+        likes: _likes,
+        comments: _comments,
+        images: _postImages,
+        commentsList: _commentsList,
+        functionality: 'comment: ${_commentToneController.text}', // Specify comment tone
+      );
+      
+      // Save to history
+      await HistoryService.savePost(analyzedPost);
+    } catch (e) {
+      print('Error saving comment to history: $e');
     }
   }
   
@@ -261,20 +354,62 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
     setState(() {
       _selectedOption = option;
       
-      if (option == 'summarize' && _hasAnalyzedContent) {
-        _generateSummary();
-      } else if (option == 'translate' && _hasAnalyzedContent) {
-        _generateTranslation();
-      }
+      // Remove automatic generation - let the user click the generate button
     });
   }
   
-  void _generateSummary() {
-    // In a real app, this would call an AI API to generate a summary
-    // For now, we'll use a mock summary
+  void _generateSummary() async {
+    if (_postContent.isEmpty) {
+      return;
+    }
+    
     setState(() {
-      _summary = 'Summary of post by $_postAuthor: ${_postContent.length > 100 ? '${_postContent.substring(0, 100)}...' : _postContent}\n\nKey points:\n- Highlights professional insights\n- Discusses industry trends\n- Shares personal experiences';
+      _isLoading = true;
     });
+    
+    try {
+      // Use the LinkedInService to perform the actual summarization
+      final linkedInService = LinkedInService();
+      final result = await linkedInService.generateSummary(
+        content: _postContent,
+        author: _postAuthor,
+        summaryType: _summaryTypeController.text.toLowerCase(),
+      );
+      
+      if (result.containsKey('error')) {
+        setState(() {
+          _isLoading = false;
+          _summary = result['summary'] ?? 'Summary generation temporarily unavailable. Please try again later.';
+        });
+        ToastUtils.showErrorToast('Summary generation failed. Please try again later.');
+        return;
+      }
+      
+      // Format the key points if available
+      String keyPointsText = '';
+      if (result.containsKey('keyPoints') && (result['keyPoints'] as List).isNotEmpty) {
+        keyPointsText = '\n\nKey points:\n';
+        for (final point in result['keyPoints'] as List) {
+          keyPointsText += '- $point\n';
+        }
+      }
+      
+      setState(() {
+        _isLoading = false;
+        _summary = result['summary'] + keyPointsText;
+      });
+      
+      // Save to history with summary functionality
+      _saveToHistoryWithSummary();
+      
+      ToastUtils.showSuccessToast('Summary generated successfully');
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _summary = 'Summary generation temporarily unavailable. Please try again later.';
+      });
+      ToastUtils.showErrorToast('Error generating summary. Please try again later.');
+    }
   }
   
   void _generateTranslation() async {
@@ -283,7 +418,7 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
     }
     
     // Don't translate if language is Default
-    if (_selectedLanguage == 'Default') {
+    if (_translationLanguageController.text == 'Default') {
       setState(() {
         _translation = '';
         _isLoading = false;
@@ -301,7 +436,7 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
       final linkedInService = LinkedInService();
       final result = await linkedInService.translateContent(
         content: _postContent,
-        targetLanguage: _selectedLanguage.toLowerCase(),
+        targetLanguage: _translationLanguageController.text.toLowerCase(),
         author: _postAuthor,
         formatForDisplay: true,
       );
@@ -319,6 +454,11 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
         _isLoading = false;
         _translation = result['formattedTranslation'] ?? result['translation'] ?? 'Translation error';
       });
+      
+      // Save to history with translation functionality
+      _saveToHistoryWithTranslation();
+      
+      ToastUtils.showSuccessToast('Translation generated successfully');
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -648,8 +788,9 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
+                                iconColor: Colors.white, // Explicitly set icon color
                               ),
-                              icon: const Icon(Icons.send, size: 16),
+                              icon: const Icon(Icons.send, size: 16, color: Colors.white),
                               label: const Text('Post to LinkedIn'),
                             ),
                           ],
@@ -1330,272 +1471,83 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
             
   Widget _buildPostCard() {
     return Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       margin: EdgeInsets.zero,
-              child: Padding(
-        padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                  radius: 16,
-                          child: Text(
-                            _postAuthor.isNotEmpty ? _postAuthor[0].toUpperCase() : 'U',
-                            style: const TextStyle(
-                      fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _postAuthor,
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                _postDate,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    
-            const SizedBox(height: 8),
-                    
-            Flexible(
-              child: Text(
-                      _postContent,
-                style: Theme.of(context).textTheme.bodyMedium,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
+      child: ExpansionTile(
+        title: Row(
+          children: [
+            Icon(
+              Icons.check_circle,
+              color: Theme.of(context).colorScheme.primary,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              "LinkedIn post detected",
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.bold,
               ),
-                    ),
-                    
-                    if (_postImages.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              _buildImagePreview(),
-                    ],
-            
-            const SizedBox(height: 12),
-            
-            // Expandable section for detailed scraped data
-            ExpansionTile(
-              title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Expand',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      // Create a formatted string with all the scraped data
-                      final scrapedDataText = '''
-Author: $_postAuthor
-Date: $_postDate
-Likes: $_likes
-Comments: $_comments
-URL: $_postUrl
-
-Full Content:
-$_postContent
-
-${_postImages.isNotEmpty ? 'Images:\n${_postImages.join('\n')}' : ''}
-
-${_commentsList.isNotEmpty ? 'Comments:\n${_commentsList.map((c) => '${c['author'] ?? 'Unknown'}: ${c['text'] ?? ''}').join('\n')}' : ''}
-
-${_errorMessage.isNotEmpty ? 'Error:\n$_errorMessage' : ''}
-''';
-                      
-                      Clipboard.setData(ClipboardData(text: scrapedDataText)).then((_) {
-                        ToastUtils.showSuccessToast('Scraped data copied to clipboard');
-                      });
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                      minimumSize: const Size(0, 30),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    icon: const Icon(Icons.copy, size: 14),
-                    label: const Text('Copy All', style: TextStyle(fontSize: 12)),
-                  ),
-                ],
-              ),
-              tilePadding: EdgeInsets.zero,
-              childrenPadding: EdgeInsets.zero,
-              initiallyExpanded: false,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8.0),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildScrapedDataRow('Author', _postAuthor),
-                      _buildScrapedDataRow('Date', _postDate),
-                      _buildScrapedDataRow('Likes', _likes.toString()),
-                      _buildScrapedDataRow('Comments', _comments.toString()),
-                      _buildScrapedDataRow('URL', _postUrl),
-                      
-                      const SizedBox(height: 8),
-                      
-                      Text(
-                        'Full Content:',
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _postContent,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      
-                      if (_postImages.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          'Images:',
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: _postImages.map((url) => Text(
-                            url,
-                            style: Theme.of(context).textTheme.bodySmall,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          )).toList(),
-                        ),
-                      ],
-                      
-                      if (_commentsList.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          'Comments:',
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        ...List.generate(
-                          _commentsList.length > 3 ? 3 : _commentsList.length,
-                          (index) => Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: RichText(
-                              text: TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: '${_commentsList[index]['author'] ?? 'Unknown'}: ',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Theme.of(context).colorScheme.onSurface,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: '${_commentsList[index]['text'] ?? ''}',
-                                    style: TextStyle(
-                                      color: Theme.of(context).colorScheme.onSurface,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (_commentsList.length > 3)
-                          Text(
-                            '... and ${_commentsList.length - 3} more comments',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                      ],
-                      
-                      if (_errorMessage.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          'Error:',
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _errorMessage,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
             ),
           ],
         ),
-      ),
-    );
-  }
-  
-  Widget _buildScrapedDataRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: RichText(
-        text: TextSpan(
-          children: [
-            TextSpan(
-              text: '$label: ',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-                fontSize: 12,
-              ),
-            ),
-            TextSpan(
-              text: value,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontSize: 12,
-              ),
-            ),
+        initiallyExpanded: false,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      radius: 16,
+                      child: Text(
+                        _postAuthor.isNotEmpty ? _postAuthor[0].toUpperCase() : 'U',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _postAuthor,
+                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            _postDate,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-              ),
+                
+                // Show image indicator if there are images
+                if (_postImages.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _buildImagePreview(),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
   
@@ -1645,11 +1597,48 @@ ${_errorMessage.isNotEmpty ? 'Error:\n$_errorMessage' : ''}
               
               const SizedBox(height: 16),
               
-        _buildPostCard(),
+          // Use the fancy dropdown field
+          _buildDropdownField(
+            label: 'Summary Type',
+            hintText: 'Select the type of summary',
+            controller: _summaryTypeController,
+            icon: Icons.format_list_bulleted,
+            options: ['Concise', 'Brief', 'Detailed'],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Generate button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isLoading ? null : () => _generateSummary(),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                iconColor: Colors.white, // Explicitly set icon color
+              ),
+              icon: _isLoading ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ) : const Icon(Icons.summarize, color: Colors.white), // Explicitly set icon color
+              label: Text(_isLoading ? 'Generating...' : 'Generate Summary'),
+            ),
+          ),
             
-            const SizedBox(height: 24),
+          const SizedBox(height: 24),
+              
+          _buildPostCard(),
             
-          Card(
+          const SizedBox(height: 24),
+            
+          _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _summary.isNotEmpty
+            ? Card(
             elevation: 2,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
@@ -1705,8 +1694,9 @@ ${_errorMessage.isNotEmpty ? 'Error:\n$_errorMessage' : ''}
                       ),
               ],
             ),
-          ),
-        ),
+              ),
+            )
+            : const SizedBox.shrink(),
       ],
     );
   }
@@ -1740,13 +1730,43 @@ ${_errorMessage.isNotEmpty ? 'Error:\n$_errorMessage' : ''}
         
         const SizedBox(height: 16),
         
-        _buildLanguageDropdown(),
+        // Use the fancy dropdown field
+        _buildDropdownField(
+          label: 'Translation Language',
+          hintText: 'Select the language to translate to',
+          controller: _translationLanguageController,
+          icon: Icons.language,
+          options: _availableLanguages,
+        ),
         
         const SizedBox(height: 16),
         
+        // Generate button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _isLoading || _translationLanguageController.text == 'Default' ? null : () => _generateTranslation(),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              iconColor: Colors.white, // Explicitly set icon color
+            ),
+            icon: _isLoading ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            ) : const Icon(Icons.translate, color: Colors.white), // Explicitly set icon color
+            label: Text(_isLoading ? 'Translating...' : 'Translate Post'),
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
         _buildPostCard(),
           
-          const SizedBox(height: 24),
+        const SizedBox(height: 24),
           
         _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -1775,7 +1795,7 @@ ${_errorMessage.isNotEmpty ? 'Error:\n$_errorMessage' : ''}
                     const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'Translation to $_selectedLanguage',
+                              'Translation to ${_translationLanguageController.text}',
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -1843,81 +1863,46 @@ ${_errorMessage.isNotEmpty ? 'Error:\n$_errorMessage' : ''}
           
           const SizedBox(height: 16),
           
+          // Use the fancy dropdown field
+          _buildDropdownField(
+            label: 'Comment Tone',
+            hintText: 'Select the tone for your comment',
+            controller: _commentToneController,
+            icon: Icons.sentiment_satisfied_alt,
+            options: _availableCommentTones,
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Generate button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isGeneratingComment ? null : () => _generateComment(),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                iconColor: Colors.white, // Explicitly set icon color
+              ),
+              icon: _isGeneratingComment ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ) : const Icon(Icons.smart_toy, color: Colors.white), // Explicitly set icon color
+              label: Text(_isGeneratingComment ? 'Generating...' : 'Generate Comment'),
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+          
         _buildPostCard(),
         
         const SizedBox(height: 24),
         
-        // Comment tone selection
-          Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                'Comment Tone',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-                
-        const SizedBox(height: 8),
-                
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                    value: _selectedCommentTone,
-                      icon: Icon(Icons.arrow_drop_down, color: Theme.of(context).colorScheme.onSurface),
-                    items: _availableCommentTones.map((String tone) {
-                        return DropdownMenuItem<String>(
-                        value: tone,
-                        child: Text(tone),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                          _selectedCommentTone = newValue;
-                          // Clear previous comment when tone changes
-                          _generatedComment = '';
-                          });
-                        }
-                      },
-                    ),
-                ),
-              ),
-            ],
-                  ),
-                ),
-                
-        // Generate comment button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-            onPressed: _isGeneratingComment ? null : _generateComment,
-            icon: _isGeneratingComment ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-            ) : const Icon(Icons.smart_toy),
-            label: Text(_isGeneratingComment ? 'Generating...' : 'Generate Comment'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-        ),
-        
         // Only show generated comment if it's not empty
         if (_generatedComment.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          
           Card(
             elevation: 2,
           shape: RoundedRectangleBorder(
@@ -1992,77 +1977,6 @@ ${_errorMessage.isNotEmpty ? 'Error:\n$_errorMessage' : ''}
     );
   }
 
-  // Helper method to build language dropdown
-  Widget _buildLanguageDropdown() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-                  Text(
-            'Select Translation Language',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-          
-          const SizedBox(height: 8),
-          
-            Row(
-              children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: _selectedLanguage,
-                      icon: Icon(Icons.arrow_drop_down, color: Theme.of(context).colorScheme.onSurface),
-                      items: _availableLanguages.map((String language) {
-                        return DropdownMenuItem<String>(
-                          value: language,
-                          child: Text(language),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                            _selectedLanguage = newValue;
-                            // Clear previous translation when language changes
-                            _translation = '';
-                          });
-                        }
-                      },
-                ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-                ElevatedButton.icon(
-                onPressed: _selectedLanguage == 'Default' || _isLoading ? null : _generateTranslation,
-                icon: _isLoading ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ) : const Icon(Icons.translate, size: 16),
-                label: Text(_isLoading ? 'Translating...' : 'Translate'),
-                  style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                ),
-              ],
-            ),
-          ],
-      ),
-    );
-  }
-
   // Generate a comment based on the post and selected tone
   void _generateComment() {
     if (_postContent.isEmpty) {
@@ -2082,7 +1996,7 @@ ${_errorMessage.isNotEmpty ? 'Error:\n$_errorMessage' : ''}
         String excerpt = _postContent.length > 30 ? _postContent.substring(0, 30) + '...' : _postContent;
         
         // Generate different comments based on the selected tone
-        switch (_selectedCommentTone) {
+        switch (_commentToneController.text) {
           case 'Professional':
             _generatedComment = "Thank you for sharing these valuable insights. Your points about $excerpt are particularly relevant in today's context. I appreciate your perspective on this topic.";
             break;
@@ -2106,8 +2020,77 @@ ${_errorMessage.isNotEmpty ? 'Error:\n$_errorMessage' : ''}
         }
       });
       
+      // Save to history with comment functionality
+      _saveToHistoryWithComment();
+      
       ToastUtils.showSuccessToast('Comment generated successfully');
     });
+  }
+
+  Widget _buildActionOption({
+    required IconData icon,
+    required String title,
+    required String description,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).shadowColor.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

@@ -1,26 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Solid background -->
+    <!-- Shadow layer -->
     <item>
         <shape>
-            <solid android:color="#121827" />
             <corners 
-                android:topLeftRadius="16dp" 
-                android:topRightRadius="16dp" />
+                android:topLeftRadius="20dp" 
+                android:topRightRadius="20dp" />
+            <padding 
+                android:bottom="1dp"
+                android:left="1dp"
+                android:right="1dp"
+                android:top="1dp" />
+            <solid android:color="#20000000" />
         </shape>
     </item>
     
-    <!-- Dotted border -->
+    <!-- Background with subtle gradient -->
     <item>
         <shape>
             <corners 
-                android:topLeftRadius="16dp" 
-                android:topRightRadius="16dp" />
-            <stroke
-                android:width="2dp"
-                android:color="#BD79FF"
-                android:dashWidth="8dp"
-                android:dashGap="4dp" />
+                android:topLeftRadius="20dp" 
+                android:topRightRadius="20dp" />
+            <gradient
+                android:angle="270"
+                android:endColor="#0D1017"
+                android:startColor="#121827"
+                android:type="linear" />
         </shape>
     </item>
 </layer-list> 

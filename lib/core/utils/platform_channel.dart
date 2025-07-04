@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:einsteiniapp/core/services/api_service.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:einsteiniapp/core/services/linkedin_service.dart';
 
 /// Utility class to handle platform-specific operations
 class PlatformChannel {
@@ -26,6 +27,11 @@ class PlatformChannel {
           onContentScraped!(content);
         }
         return null;
+      case 'generateSummary':
+        final content = call.arguments['content'] as String? ?? '';
+        final author = call.arguments['author'] as String? ?? 'Unknown author';
+        final summaryType = call.arguments['summaryType'] as String? ?? 'concise';
+        return await generateSummary(content, author, summaryType);
       default:
         throw PlatformException(
           code: 'Unimplemented',
@@ -114,6 +120,29 @@ class PlatformChannel {
         'comments': 0,
         'images': <String>[],
         'commentsList': <Map<String, String>>[]
+      };
+    }
+  }
+  
+  /// Generate a summary of LinkedIn post content
+  static Future<Map<String, dynamic>> generateSummary(String content, String author, String summaryType) async {
+    try {
+      // Import the LinkedIn service here to avoid circular imports
+      final linkedInService = LinkedInService();
+      
+      // Call the LinkedIn service to generate a summary
+      final result = await linkedInService.generateSummary(
+        content: content,
+        author: author,
+        summaryType: summaryType,
+      );
+      
+      return result;
+    } catch (e) {
+      print('Failed to generate summary: $e');
+      return {
+        'summary': 'Failed to generate summary: $e',
+        'error': e.toString(),
       };
     }
   }

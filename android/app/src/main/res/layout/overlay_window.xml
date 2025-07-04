@@ -6,16 +6,16 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
     
-    <!-- Semi-transparent scrim to intercept touches -->
+    <!-- Semi-transparent scrim with blur effect for background -->
     <View
         android:id="@+id/overlay_scrim"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#33000000"
+        android:background="#66000000"
         android:clickable="true"
         android:focusable="true" />
     
-    <!-- The actual overlay content -->
+    <!-- The actual overlay content with improved design -->
     <LinearLayout
         android:id="@+id/overlay_container"
         android:layout_width="match_parent"
@@ -24,75 +24,85 @@
         android:layout_gravity="bottom"
         android:background="@drawable/overlay_rounded_background_bordered">
 
-        <!-- Drag handle at the very top for resizing -->
+        <!-- Modern drag handle at the top for resizing -->
         <RelativeLayout
             android:id="@+id/resizeHandle"
             android:layout_width="match_parent"
-            android:layout_height="36dp"
-            android:padding="12dp">
+            android:layout_height="32dp"
+            android:paddingTop="16dp">
 
             <View
-                android:layout_width="64dp"
+                android:layout_width="40dp"
                 android:layout_height="4dp"
                 android:layout_centerInParent="true"
-                android:background="#505050"
-                android:elevation="2dp" />
+                android:background="#808080"
+                android:alpha="0.5"
+                android:elevation="1dp" 
+                android:layout_marginBottom="8dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginHorizontal="8dp"
+                android:clickable="false"
+                android:focusable="false"
+                android:focusableInTouchMode="false"/>
         </RelativeLayout>
 
-        <!-- Header with tabs -->
+        <!-- Simple tab buttons instead of TabLayout -->
         <LinearLayout
-            android:id="@+id/tabLayout"
+            android:id="@+id/tabButtons"
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:orientation="horizontal"
-            android:gravity="center"
-            android:background="#121827">
+            android:background="#00000000">
 
-            <TextView
-                android:id="@+id/tab1"
+            <Button
+                android:id="@+id/tab_summarize"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:gravity="center"
                 android:text="Summarize"
+                android:textSize="14sp"
                 android:textColor="#BD79FF"
-                style="@style/EinsteiniOverlayTabText" />
+                android:background="?android:attr/selectableItemBackground"
+                android:textAllCaps="false" />
 
-            <TextView
-                android:id="@+id/tab2"
+            <Button
+                android:id="@+id/tab_translate"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:gravity="center"
                 android:text="Translate"
+                android:textSize="14sp"
                 android:textColor="#B4B7BD"
-                style="@style/EinsteiniOverlayTabText" />
+                android:background="?android:attr/selectableItemBackground"
+                android:textAllCaps="false" />
 
-            <TextView
-                android:id="@+id/tab3"
+            <Button
+                android:id="@+id/tab_comment"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:gravity="center"
                 android:text="Comment"
+                android:textSize="14sp"
                 android:textColor="#B4B7BD"
-                style="@style/EinsteiniOverlayTabText" />
+                android:background="?android:attr/selectableItemBackground"
+                android:textAllCaps="false" />
         </LinearLayout>
 
         <View
             android:id="@+id/divider"
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#1A2235" />
+            android:background="#2A3245"
+            android:alpha="0.5" />
 
         <!-- Content area with ScrollView -->
-        <ScrollView
+        <androidx.core.widget.NestedScrollView
             android:id="@+id/contentScrollView"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
             android:fillViewport="true"
-            android:scrollbars="vertical">
+            android:scrollbars="none">
 
             <FrameLayout
                 android:layout_width="match_parent"
@@ -104,9 +114,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_margin="16dp"
-                    app:cardBackgroundColor="#1A2235"
-                    app:cardCornerRadius="8dp"
+                    app:cardCornerRadius="12dp"
                     app:cardElevation="2dp"
+                    app:cardBackgroundColor="#1A2235"
                     android:visibility="gone">
 
                     <LinearLayout
@@ -120,15 +130,18 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="Generated Content"
-                            style="@style/EinsteiniOverlayTitle" />
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="#BD79FF" />
 
                         <TextView
                             android:id="@+id/generated_content"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="12dp"
                             android:text=""
-                            style="@style/EinsteiniOverlayBodyText" />
+                            android:textSize="14sp"
+                            android:textColor="#FFFFFF" />
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
 
@@ -141,488 +154,143 @@
                     android:padding="16dp"
                     android:visibility="visible">
 
-                    <!-- Summary options dropdown -->
-                    <LinearLayout
+                    <!-- Summary options card -->
+                    <androidx.cardview.widget.CardView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="20dp"
                         android:layout_marginBottom="16dp"
-                        android:background="#1A2235">
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Customize Summary"
-                            android:textSize="18sp"
-                            android:textStyle="bold"
-                            style="@style/EinsteiniOverlayTitle" />
-
-                        <View
-                            android:layout_width="40dp"
-                            android:layout_height="3dp"
-                            android:background="#BD79FF"
-                            android:layout_marginTop="8dp"
-                            android:layout_marginBottom="16dp"/>
+                        app:cardCornerRadius="12dp"
+                        app:cardElevation="2dp"
+                        app:cardBackgroundColor="#1A2235">
 
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
-                            android:background="@drawable/overlay_rounded_background_dark"
-                            android:padding="16dp">
+                            android:padding="20dp">
 
                             <TextView
-                                android:layout_width="wrap_content"
+                                android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="Summary Type"
-                                android:textColor="#BD79FF"
+                                android:text="Customize Summary"
+                                android:textSize="18sp"
                                 android:textStyle="bold"
-                                android:textSize="14sp"
-                                android:layout_marginBottom="8dp"/>
+                                android:textColor="#BD79FF" />
+
+                            <View
+                                android:layout_width="40dp"
+                                android:layout_height="3dp"
+                                android:background="#BD79FF"
+                                android:layout_marginTop="8dp"
+                                android:layout_marginBottom="16dp"/>
 
                             <LinearLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:orientation="horizontal"
-                                android:gravity="center_vertical"
-                                android:background="#1E293B"
-                                android:padding="8dp">
+                                android:orientation="vertical"
+                                android:background="@drawable/overlay_rounded_background_dark"
+                                android:padding="16dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Summary Type"
+                                    android:textColor="#BD79FF"
+                                    android:textStyle="bold"
+                                    android:textSize="14sp"
+                                    android:layout_marginBottom="8dp"/>
 
                                 <Spinner
                                     android:id="@+id/summary_type_spinner"
                                     android:layout_width="match_parent"
                                     android:layout_height="48dp"
                                     android:backgroundTint="#BD79FF"
-                                    android:popupBackground="#1E293B"
                                     android:spinnerMode="dropdown" />
+
+                                <Button
+                                    android:id="@+id/generate_summary_button"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="56dp"
+                                    android:text="Generate Summary"
+                                    android:layout_marginTop="16dp"
+                                    android:textColor="#FFFFFF"
+                                    android:textAllCaps="false"
+                                    android:textSize="15sp"
+                                    android:background="#BD79FF" />
                             </LinearLayout>
-
-                            <Button
-                                android:id="@+id/generate_summary_button"
-                                android:layout_width="match_parent"
-                                android:layout_height="48dp"
-                                android:text="Generate Summary"
-                                android:layout_marginTop="16dp"
-                                android:backgroundTint="#BD79FF"
-                                android:textColor="#FFFFFF"
-                                android:textAllCaps="false"
-                                android:elevation="4dp"/>
                         </LinearLayout>
-                    </LinearLayout>
+                    </androidx.cardview.widget.CardView>
 
-                    <LinearLayout
+                    <!-- Rest of the content sections using CardView -->
+                    <androidx.cardview.widget.CardView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp"
-                        android:layout_margin="0dp"
-                        android:background="#1A2235">
-
-                        <TextView
-                            android:id="@+id/block_title"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Summary"
-                            style="@style/EinsteiniOverlayTitle" />
-
-                        <TextView
-                            android:id="@+id/block_content"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:text="This article discusses how AI can improve workplace productivity through automated task management and intelligent data processing."
-                            style="@style/EinsteiniOverlayBodyText" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp"
-                        android:layout_margin="0dp"
-                        android:layout_marginTop="16dp"
-                        android:background="#1A2235">
-
-                        <TextView
-                            android:id="@+id/key_points_title"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Key Points"
-                            style="@style/EinsteiniOverlayTitle" />
-
-                        <TextView
-                            android:id="@+id/key_points_content"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:text="• AI significantly reduces time spent on repetitive tasks\n• Smart assistants can prioritize information and notifications\n• Integration with existing tools enhances workflow efficiency"
-                            style="@style/EinsteiniOverlayBodyText" />
-                    </LinearLayout>
-                    
-                    <!-- Additional content for scroll testing -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp"
-                        android:layout_margin="0dp"
-                        android:layout_marginTop="16dp"
-                        android:background="#1A2235">
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Implementation"
-                            style="@style/EinsteiniOverlayTitle" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:text="• Start with small, focused AI implementations\n• Prioritize areas where automation can save the most time\n• Ensure proper training and onboarding for team members\n• Measure outcomes and adjust implementations as needed\n• Consider privacy and security implications"
-                            style="@style/EinsteiniOverlayBodyText" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp"
-                        android:layout_margin="0dp"
-                        android:layout_marginTop="16dp"
-                        android:background="#1A2235">
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Results"
-                            style="@style/EinsteiniOverlayTitle" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:text="Companies implementing these AI strategies have reported a 32% increase in productivity and 28% reduction in time spent on administrative tasks. Employee satisfaction scores also improved by an average of 24% following successful AI integration."
-                            style="@style/EinsteiniOverlayBodyText" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <!-- Translate content -->
-                <LinearLayout
-                    android:id="@+id/contentViewTwitter"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp"
-                    android:visibility="gone">
-
-                    <!-- Translation options dropdown -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="20dp"
-                        android:layout_marginBottom="16dp"
-                        android:background="#1A2235">
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Translation Settings"
-                            android:textSize="18sp"
-                            android:textStyle="bold"
-                            style="@style/EinsteiniOverlayTitle" />
-
-                        <View
-                            android:layout_width="40dp"
-                            android:layout_height="3dp"
-                            android:background="#BD79FF"
-                            android:layout_marginTop="8dp"
-                            android:layout_marginBottom="16dp"/>
+                        android:layout_marginBottom="12dp"
+                        app:cardCornerRadius="12dp"
+                        app:cardElevation="1dp"
+                        app:cardBackgroundColor="#1A2235">
 
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
-                            android:background="@drawable/overlay_rounded_background_dark"
                             android:padding="16dp">
 
-                            <LinearLayout
+                            <TextView
+                                android:id="@+id/block_title"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:orientation="horizontal"
-                                android:gravity="center_vertical"
-                                android:background="#1E293B"
-                                android:padding="8dp">
+                                android:text="Summary"
+                                android:textSize="18sp"
+                                android:textStyle="bold"
+                                android:textColor="#BD79FF" />
 
-                                <Spinner
-                                    android:id="@+id/language_spinner"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="48dp"
-                                    android:backgroundTint="#BD79FF"
-                                    android:popupBackground="#1E293B"
-                                    android:spinnerMode="dropdown" />
-                            </LinearLayout>
-
-                            <Button
-                                android:id="@+id/translate_button"
+                            <TextView
+                                android:id="@+id/block_content"
                                 android:layout_width="match_parent"
-                                android:layout_height="48dp"
-                                android:text="Translate Content"
-                                android:layout_marginTop="16dp"
-                                android:backgroundTint="#BD79FF"
-                                android:textColor="#FFFFFF"
-                                android:textAllCaps="false"
-                                android:elevation="4dp"/>
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:text="This article discusses how AI can improve workplace productivity through automated task management and intelligent data processing."
+                                android:textSize="14sp"
+                                android:textColor="#FFFFFF" />
                         </LinearLayout>
-                    </LinearLayout>
+                    </androidx.cardview.widget.CardView>
 
-                    <LinearLayout
+                    <androidx.cardview.widget.CardView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp"
-                        android:layout_margin="0dp"
-                        android:background="#1A2235">
-
-                        <TextView
-                            android:id="@+id/translate_title"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Translation"
-                            style="@style/EinsteiniOverlayTitle" />
-
-                        <TextView
-                            android:id="@+id/translate_content"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:text="Here is the translated content from the original post."
-                            style="@style/EinsteiniOverlayBodyText" />
-                    </LinearLayout>
-                    
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp"
-                        android:layout_margin="0dp"
-                        android:layout_marginTop="16dp"
-                        android:background="#1A2235">
-
-                        <TextView
-                            android:id="@+id/original_title"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Original"
-                            style="@style/EinsteiniOverlayTitle" />
-
-                        <TextView
-                            android:id="@+id/original_content"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:text="La inteligencia artificial está transformando la forma en que trabajamos e interactuamos con la tecnología en nuestra vida cotidiana."
-                            style="@style/EinsteiniOverlayBodyText" />
-                    </LinearLayout>
-                    
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp"
-                        android:layout_margin="0dp"
-                        android:layout_marginTop="16dp"
-                        android:background="#1A2235">
-
-                        <TextView
-                            android:id="@+id/translation_title"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Translation"
-                            style="@style/EinsteiniOverlayTitle" />
-
-                        <TextView
-                            android:id="@+id/translation_content"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:text="Artificial intelligence is transforming the way we work and interact with technology in our daily lives."
-                            style="@style/EinsteiniOverlayBodyText" />
-                    </LinearLayout>
-                </LinearLayout>
-                
-                <!-- Comment content -->
-                <LinearLayout
-                    android:id="@+id/contentViewComment"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp"
-                    android:visibility="gone">
-
-                    <!-- Comment Generator Section -->
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Comment Generator"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
-                        style="@style/EinsteiniOverlayTitle" />
-
-                    <View
-                        android:layout_width="40dp"
-                        android:layout_height="3dp"
-                        android:background="#BD79FF"
-                        android:layout_marginTop="8dp"
-                        android:layout_marginBottom="16dp"/>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:background="@drawable/overlay_rounded_background_dark"
-                        android:padding="16dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Comment Style"
-                            android:textColor="#BD79FF"
-                            android:textStyle="bold"
-                            android:textSize="14sp"
-                            android:layout_marginBottom="12dp"/>
+                        android:layout_marginBottom="12dp"
+                        app:cardCornerRadius="12dp"
+                        app:cardElevation="1dp"
+                        app:cardBackgroundColor="#1A2235">
 
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:background="#1E293B"
-                            android:padding="8dp">
+                            android:orientation="vertical"
+                            android:padding="16dp">
 
-                            <Spinner
-                                android:id="@+id/comment_style_spinner"
+                            <TextView
+                                android:id="@+id/key_points_title"
                                 android:layout_width="match_parent"
-                                android:layout_height="48dp"
-                                android:backgroundTint="#BD79FF"
-                                android:popupBackground="#1E293B"
-                                android:spinnerMode="dropdown" />
+                                android:layout_height="wrap_content"
+                                android:text="Key Points"
+                                android:textSize="18sp"
+                                android:textStyle="bold"
+                                android:textColor="#BD79FF" />
+
+                            <TextView
+                                android:id="@+id/key_points_content"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:text="• AI automation reduces manual tasks\n• Data processing is 70% faster\n• Integration with existing tools is seamless\n• ROI is measurable within 3 months"
+                                android:textSize="14sp"
+                                android:textColor="#FFFFFF" />
                         </LinearLayout>
-
-                        <Button
-                            android:id="@+id/generate_comment_button"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:text="Generate Comments"
-                            android:layout_marginTop="16dp"
-                            android:backgroundTint="#BD79FF"
-                            android:textColor="#FFFFFF"
-                            android:textAllCaps="false"
-                            android:elevation="4dp"/>
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp"
-                        android:layout_margin="0dp"
-                        android:background="#1A2235">
-
-                        <TextView
-                            android:id="@+id/comment_ideas_title"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Comment Ideas"
-                            style="@style/EinsteiniOverlayTitle" />
-
-                        <TextView
-                            android:id="@+id/comment_ideas_content"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:text="Here are some suggested comments you could post in response to this content."
-                            style="@style/EinsteiniOverlayBodyText" />
-                    </LinearLayout>
-                    
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp"
-                        android:layout_margin="0dp"
-                        android:layout_marginTop="16dp"
-                        android:background="#1A2235">
-
-                        <TextView
-                            android:id="@+id/professional_title"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Professional"
-                            style="@style/EinsteiniOverlayTitle" />
-
-                        <TextView
-                            android:id="@+id/professional_content"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:text="Thank you for sharing these insights! I've been exploring similar AI implementation strategies at my organization and have seen comparable productivity gains."
-                            style="@style/EinsteiniOverlayBodyText" />
-                    </LinearLayout>
-                    
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp"
-                        android:layout_margin="0dp"
-                        android:layout_marginTop="16dp"
-                        android:background="#1A2235">
-
-                        <TextView
-                            android:id="@+id/question_title"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Question"
-                            style="@style/EinsteiniOverlayTitle" />
-
-                        <TextView
-                            android:id="@+id/question_content"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:text="This is very interesting! Could you share more about specific AI tools your team has found most effective for workflow automation?"
-                            style="@style/EinsteiniOverlayBodyText" />
-                    </LinearLayout>
-                    
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp"
-                        android:layout_margin="0dp"
-                        android:layout_marginTop="16dp"
-                        android:background="#1A2235">
-
-                        <TextView
-                            android:id="@+id/thoughtful_title"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Thoughtful"
-                            style="@style/EinsteiniOverlayTitle" />
-
-                        <TextView
-                            android:id="@+id/thoughtful_content"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:text="While the productivity gains are impressive, it's also important to consider how we can use AI to improve work-life balance rather than just increasing output. The employee satisfaction metrics you mentioned are encouraging in that regard."
-                            style="@style/EinsteiniOverlayBodyText" />
-                    </LinearLayout>
+                    </androidx.cardview.widget.CardView>
                 </LinearLayout>
             </FrameLayout>
-        </ScrollView>
+        </androidx.core.widget.NestedScrollView>
     </LinearLayout>
 </FrameLayout>

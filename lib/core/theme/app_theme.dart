@@ -108,18 +108,24 @@ class AppTheme {
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: _primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        textStyle: const TextStyle(
+      style: ButtonStyle(
+        backgroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) {
+            return _primaryColor.withOpacity(0.5);
+          }
+          return _primaryColor;
+        }),
+        foregroundColor: MaterialStateProperty.all(Colors.white),
+        iconColor: MaterialStateProperty.all(Colors.white),
+        textStyle: MaterialStateProperty.all(const TextStyle(
           fontWeight: FontWeight.bold,
           fontFamily: _spaceGroteskFontFamily,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(
+        )),
+        elevation: MaterialStateProperty.all(0),
+        padding: MaterialStateProperty.all(const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+        shape: MaterialStateProperty.all(RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-        ),
+        )),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -260,18 +266,24 @@ class AppTheme {
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: _primaryDarkColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        textStyle: const TextStyle(
+      style: ButtonStyle(
+        backgroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) {
+            return _primaryDarkColor.withOpacity(0.5);
+          }
+          return _primaryDarkColor;
+        }),
+        foregroundColor: MaterialStateProperty.all(Colors.white),
+        iconColor: MaterialStateProperty.all(Colors.white),
+        textStyle: MaterialStateProperty.all(const TextStyle(
           fontWeight: FontWeight.bold,
           fontFamily: _spaceGroteskFontFamily,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(
+        )),
+        elevation: MaterialStateProperty.all(0),
+        padding: MaterialStateProperty.all(const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+        shape: MaterialStateProperty.all(RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-        ),
+        )),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(

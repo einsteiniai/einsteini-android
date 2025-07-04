@@ -306,6 +306,44 @@ class LinkedInService {
     }
   }
   
+  /// Generate summary of LinkedIn post content
+  Future<Map<String, dynamic>> generateSummary({
+    required String content,
+    required String author,
+    String summaryType = 'concise',
+  }) async {
+    try {
+      final result = await _apiService.generateSummary(
+        content: content,
+        author: author,
+        summaryType: summaryType,
+      );
+      
+      // Check for errors in the API response
+      if (result.containsKey('error')) {
+        debugPrint('Summary generation error detected: ${result['error']}');
+        return {
+          'summary': result['summary'] ?? 'Summary generation error',
+          'error': result['error']
+        };
+      }
+      
+      final summary = result['summary'] ?? 'Summary generation error';
+      
+      return {
+        'summary': summary,
+        'keyPoints': result['keyPoints'] ?? [],
+        'summaryType': summaryType
+      };
+    } catch (e) {
+      debugPrint('Exception in generateSummary: $e');
+      return {
+        'summary': 'Error: Summary generation failed',
+        'error': e.toString()
+      };
+    }
+  }
+  
   /// Correct grammar in the given text
   Future<String> correctGrammar(String text) async {
     return await _apiService.correctGrammar(text);

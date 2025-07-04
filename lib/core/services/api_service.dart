@@ -435,20 +435,19 @@ class ApiService {
       }
       
       final email = await _getUserEmail();
-      final prompt = 'Translate this post to ${language} for this text: ${content}.';
       
-      debugPrint('Sending translation request with prompt: $prompt');
+      debugPrint('Sending translation request to new /api/translate endpoint');
       debugPrint('Using email: $email');
       
       final response = await http.post(
-        Uri.parse('$_baseUrl/comment'),
+        Uri.parse('$_baseUrl/translate'),
         headers: {
           'Content-Type': 'application/json',
           ..._headers,
         },
         body: jsonEncode({
-          'requestContext': {'httpMethod': 'POST'},
-          'prompt': prompt,
+          'text': content,
+          'targetLanguage': language,
           'email': email,
         }),
       );
@@ -457,9 +456,12 @@ class ApiService {
       debugPrint('Translation response body: ${response.body}');
       
       if (response.statusCode == 200) {
-        // The API returns the translated text directly as a string in the response
-        // We need to handle this format correctly
-        final data = response.body;
+        final responseData = jsonDecode(response.body);
+        
+        // Extract only the body from the nested response structure
+        final data = responseData['body'] != null ? 
+            (responseData['body'] is String ? jsonDecode(responseData['body']) : responseData['body']) : 
+            responseData;
         
         if (data == null || data.isEmpty) {
           return {
@@ -468,14 +470,17 @@ class ApiService {
           };
         }
         
-        // Remove any quotes that might be in the response
-        String cleanedResponse = data;
-        if (data.startsWith('"') && data.endsWith('"')) {
-          cleanedResponse = data.substring(1, data.length - 1);
+        final translation = data['translation'] ?? data['text'] ?? '';
+        
+        if (translation.isEmpty) {
+          return {
+            'translation': 'Error: Empty translation returned from server',
+            'error': 'Empty translation'
+          };
         }
         
         return {
-          'translation': cleanedResponse,
+          'translation': translation,
         };
       } else {
         debugPrint('Error translating content: ${response.statusCode}');
@@ -550,6 +555,119 @@ class ApiService {
     } catch (e) {
       debugPrint('Exception while correcting grammar: $e');
       return text;
+    }
+  }
+  
+  /// Generate a summary of LinkedIn post content
+  Future<Map<String, dynamic>> generateSummary({
+    required String content,
+    required String author,
+    String summaryType = 'concise',
+  }) async {
+    try {
+      final email = await _getUserEmail();
+      
+      // Construct an appropriate prompt for summarization based on the type
+      String prompt;
+      
+      switch (summaryType.toLowerCase()) {
+        case 'brief':
+          prompt = 'Provide a brief summary of this LinkedIn post by $author: $content';
+          break;
+        case 'detailed':
+          prompt = 'Generate a detailed summary of this LinkedIn post by $author, covering all major points: $content';
+          break;
+        default:
+          prompt = 'Summarize this LinkedIn post by $author in a concise way: $content';
+      }
+      
+      debugPrint('Sending summary request with style: ${summaryType.toLowerCase()}');
+      
+      // Use the API summary endpoint which is specifically for summarization
+      final response = await http.post(
+        Uri.parse('$_baseUrl/summarize'),
+        headers: {
+          'Content-Type': 'application/json',
+          ..._headers,
+        },
+        body: jsonEncode({
+          'requestContext': {'httpMethod': 'POST'},
+          'text': content,
+          'email': email,
+          'style': summaryType.toLowerCase(), // Style parameter
+        }),
+      );
+      
+      debugPrint('Summary response code: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        
+        // Extract only the body from the nested response structure
+        final bodyData = responseData['body'] != null ? 
+            (responseData['body'] is String ? responseData['body'] : jsonEncode(responseData['body'])) : 
+            response.body;
+            
+        debugPrint('Summary response: ${bodyData.length > 100 ? bodyData.substring(0, 100) + '...' : bodyData}');
+        
+        if (bodyData == null || bodyData.isEmpty) {
+          return {
+            'summary': 'Error: Empty summary returned from server',
+            'error': 'Empty response'
+          };
+        }
+        
+        // Clean up the response
+        String cleanedResponse = bodyData;
+        if (bodyData.startsWith('"') && bodyData.endsWith('"')) {
+          cleanedResponse = bodyData.substring(1, bodyData.length - 1);
+        }
+        
+        // Extract key points if available
+        List<String> keyPoints = [];
+        
+        // Try to extract bullet points
+        final bulletMatches = RegExp(r'•\s*([^\n•]+)').allMatches(cleanedResponse);
+        keyPoints = bulletMatches.map((m) => m.group(1)?.trim() ?? '').toList();
+        
+        // If no bullet points found, look for numbered lists
+        if (keyPoints.isEmpty) {
+          final numberMatches = RegExp(r'(\d+)[\.)\]]\s*([^\n]+)').allMatches(cleanedResponse);
+          keyPoints = numberMatches.map((m) => m.group(2)?.trim() ?? '').toList();
+        }
+        
+        return {
+          'summary': cleanedResponse,
+          'keyPoints': keyPoints,
+        };
+      } else {
+        debugPrint('Error generating summary: ${response.statusCode}');
+        debugPrint('Response body: ${response.body}');
+        
+        // Try to parse error response for more information
+        try {
+          final errorBody = jsonDecode(response.body);
+          final errorMessage = errorBody['error'] ?? 'Unknown server error';
+          debugPrint('Error details: $errorMessage');
+          
+          return {
+            'summary': 'The summary service is temporarily unavailable. Please try again later.',
+            'error': 'Server error ${response.statusCode}: $errorMessage'
+          };
+        } catch (e) {
+          // If we can't parse the error, return a generic message
+          return {
+            'summary': 'The summary service is temporarily unavailable. Please try again later.',
+            'error': 'Server error ${response.statusCode}: ${response.body}'
+          };
+        }
+      }
+    } catch (e) {
+      debugPrint('Exception while generating summary: $e');
+      return {
+        'summary': 'Unable to generate summary at this time. Please try again later.',
+        'error': e.toString()
+      };
     }
   }
   

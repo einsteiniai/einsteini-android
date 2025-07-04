@@ -259,8 +259,11 @@ class _HistoryTabState extends State<HistoryTab> {
                 // Navigate to AI Assistant tab
                 DefaultTabController.of(context).animateTo(0);
               },
-              icon: const Icon(Icons.add),
+              icon: const Icon(Icons.add, color: Colors.white),
               label: const Text('Analyze a Post'),
+              style: ElevatedButton.styleFrom(
+                iconColor: Colors.white,
+              ),
             ),
           ],
         ],
@@ -285,6 +288,25 @@ class _HistoryTabState extends State<HistoryTab> {
   Widget _buildHistoryCard(AnalyzedPost item) {
     final DateTime analyzedAt = DateTime.parse(item.analyzedAt);
     final String timeAgo = AnalyzedPost.getRelativeTime(analyzedAt);
+    
+    // Determine icon and color based on functionality
+    IconData functionIcon = Icons.analytics_outlined;
+    Color functionColor = Theme.of(context).colorScheme.primary;
+    String functionText = 'Analyzed';
+    
+    if (item.functionality.contains('summary')) {
+      functionIcon = Icons.summarize;
+      functionColor = Colors.green;
+      functionText = 'Summarized';
+    } else if (item.functionality.contains('translate')) {
+      functionIcon = Icons.translate;
+      functionColor = Colors.blue;
+      functionText = 'Translated';
+    } else if (item.functionality.contains('comment')) {
+      functionIcon = Icons.comment;
+      functionColor = Colors.orange;
+      functionText = 'Comment Generated';
+    }
     
     return Card(
       elevation: 1,
@@ -331,17 +353,54 @@ class _HistoryTabState extends State<HistoryTab> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        'Analyzed $timeAgo',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.history,
+                            size: 12,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Analyzed $timeAgo',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            
+            // Add functionality indicator
+            if (item.functionality.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: functionColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(functionIcon, size: 16, color: functionColor),
+                    const SizedBox(width: 6),
+                    Text(
+                      _getFunctionalityDisplayText(item.functionality),
+                      style: TextStyle(
+                        color: functionColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            
             const SizedBox(height: 16),
             // Remove stats chips, keep only the action buttons
             Row(
@@ -355,11 +414,12 @@ class _HistoryTabState extends State<HistoryTab> {
                       // Navigate to AI Assistant tab handled by parent
                     }
                   },
-                  icon: const Icon(Icons.refresh, size: 16),
+                  icon: const Icon(Icons.refresh, size: 16, color: Colors.white),
                   label: const Text('Re-analyze'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Colors.white,
+                    iconColor: Colors.white,
                     visualDensity: VisualDensity.compact,
                   ),
                 ),
@@ -376,6 +436,30 @@ class _HistoryTabState extends State<HistoryTab> {
         ),
       ),
     );
+  }
+  
+  // Helper method to get a user-friendly display text for functionality
+  String _getFunctionalityDisplayText(String functionality) {
+    if (functionality.isEmpty || functionality == 'analyze') {
+      return 'Analyzed';
+    }
+    
+    if (functionality.contains('summary')) {
+      final type = functionality.split(':').length > 1 ? functionality.split(':')[1].trim() : '';
+      return 'Summarized ($type)';
+    }
+    
+    if (functionality.contains('translate')) {
+      final language = functionality.split(':').length > 1 ? functionality.split(':')[1].trim() : '';
+      return 'Translated to $language';
+    }
+    
+    if (functionality.contains('comment')) {
+      final tone = functionality.split(':').length > 1 ? functionality.split(':')[1].trim() : '';
+      return 'Comment ($tone tone)';
+    }
+    
+    return functionality;
   }
   
   void _showOptionsBottomSheet(BuildContext context, AnalyzedPost item) {

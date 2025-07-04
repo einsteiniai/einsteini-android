@@ -13,6 +13,7 @@ class AnalyzedPost {
   final int comments;
   final List<String> images;
   final List<Map<String, String>> commentsList;
+  final String functionality; // Added field to track what feature was used
 
   AnalyzedPost({
     required this.id,
@@ -26,6 +27,7 @@ class AnalyzedPost {
     required this.comments,
     required this.images,
     required this.commentsList,
+    this.functionality = '', // Default to empty string
   });
 
   Map<String, dynamic> toJson() {
@@ -41,6 +43,7 @@ class AnalyzedPost {
       'comments': comments,
       'images': images,
       'commentsList': commentsList.map((comment) => comment).toList(),
+      'functionality': functionality,
     };
   }
 
@@ -60,6 +63,7 @@ class AnalyzedPost {
           ?.map((comment) => Map<String, String>.from(comment))
           .toList() ??
           [],
+      functionality: json['functionality'] ?? '',
     );
   }
 

@@ -403,11 +403,12 @@ class LinkedInOverlayControlsState extends State<LinkedInOverlayControls> {
             child: ElevatedButton.icon(
               onPressed: _isLoading ? null : () => _generateContent(),
               icon: _isLoading 
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.translate),
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.translate, color: Colors.white),
               label: Text(_isLoading ? 'Translating...' : 'Translate'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
+                iconColor: Colors.white,
               ),
             ),
           ),
@@ -703,10 +704,13 @@ class LinkedInOverlayControlsState extends State<LinkedInOverlayControls> {
       width: double.infinity,
       child: ElevatedButton(
         onPressed: _isLoading ? null : _generateContent,
+        style: ElevatedButton.styleFrom(
+          foregroundColor: Colors.white,
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12.0),
           child: _isLoading
-              ? const CircularProgressIndicator()
+              ? const CircularProgressIndicator(color: Colors.white)
               : Text(buttonLabel),
         ),
       ),
