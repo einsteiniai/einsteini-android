@@ -215,10 +215,24 @@ class _HistoryTabState extends State<HistoryTab> {
           : null,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none, // Remove the border
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none, // Remove the border
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Theme.of(context).colorScheme.primary,
+            width: 1.5,
+          ),
         ),
         contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         filled: true,
-        fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+        fillColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey[800]!.withOpacity(0.5)
+            : Colors.grey[100]!.withOpacity(0.7),
       ),
       onSubmitted: (_) {
         // Trigger search on submit
@@ -257,7 +271,7 @@ class _HistoryTabState extends State<HistoryTab> {
             ElevatedButton.icon(
               onPressed: () {
                 // Navigate to AI Assistant tab
-                DefaultTabController.of(context).animateTo(0);
+                DefaultTabController.of(context).animateTo(1);
               },
               icon: const Icon(Icons.add, color: Colors.white),
               label: const Text('Analyze a Post'),

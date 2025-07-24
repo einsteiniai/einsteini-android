@@ -7,6 +7,7 @@ import 'package:einsteiniapp/core/services/history_service.dart';
 import 'dart:async';
 import 'package:uuid/uuid.dart';
 import 'package:einsteiniapp/core/services/linkedin_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AIAssistantTab extends StatefulWidget {
   const AIAssistantTab({Key? key}) : super(key: key);
@@ -57,6 +58,7 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
   int _comments = 0;
   List<String> _postImages = [];
   List<Map<String, String>> _commentsList = [];
+  String _postProfileImage = '';
   
   // Generated content
   String _selectedOption = '';
@@ -95,7 +97,7 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
     
     // Set default values for new controllers
     _summaryTypeController.text = 'Concise';
-    _translationLanguageController.text = 'English';
+    _translationLanguageController.text = 'Default';
     _commentToneController.text = 'Professional';
   }
   
@@ -163,6 +165,7 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
         _postContent = scrapedData['content'] ?? 'No content found';
         _postAuthor = scrapedData['author'] ?? 'Unknown author';
         _postDate = scrapedData['date'] ?? 'Unknown date';
+        _postProfileImage = scrapedData['profileImage'] ?? ''; // Assuming profileImage is part of scrapedData
         _likes = scrapedData['likes'] ?? 0;
         _comments = scrapedData['comments'] ?? 0;
         _postImages = scrapedData['images'] ?? [];
@@ -429,13 +432,21 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
     
     setState(() {
       _isLoading = true;
+      _translation = ''; // Clear previous translation
     });
     
     try {
+      // Clean up post content before sending - just like the extension does
+      final cleanedPostContent = _postContent
+          .replaceAll(RegExp(r'\n+'), ' ') // Replace newlines with spaces
+          .replaceAll(RegExp(r'\s+'), ' ') // Replace multiple spaces with single space
+          .replaceAll('…more', '') // Remove "…more" text
+          .trim();
+          
       // Use the LinkedInService to perform the actual translation
       final linkedInService = LinkedInService();
       final result = await linkedInService.translateContent(
-        content: _postContent,
+        content: cleanedPostContent,
         targetLanguage: _translationLanguageController.text.toLowerCase(),
         author: _postAuthor,
         formatForDisplay: true,
@@ -450,9 +461,12 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
         return;
       }
       
+      // Get the raw translation
+      final rawTranslation = result['formattedTranslation'] ?? result['translation'] ?? 'Translation error';
+      
       setState(() {
         _isLoading = false;
-        _translation = result['formattedTranslation'] ?? result['translation'] ?? 'Translation error';
+        _translation = rawTranslation;
       });
       
       // Save to history with translation functionality
@@ -1255,11 +1269,28 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
                 controller: _linkController,
                 decoration: InputDecoration(
                   hintText: 'https://www.linkedin.com/posts/...',
+                  // Remove border and use filled style
+                  filled: true,
+                  fillColor: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[800]!.withOpacity(0.5)
+                      : Colors.grey[100]!.withOpacity(0.7),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none, // Remove the border
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none, // Remove the border
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 1.5,
+                    ),
                   ),
                   prefixIcon: const Icon(Icons.link),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   suffixIcon: _linkController.text.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear),
@@ -1380,48 +1411,103 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
   
   Widget _buildAnalyzedContent() {
     return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-            'What would you like to do with this post?',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'What would you like to do with this post?',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+          
+        const SizedBox(height: 20),
+          
+        Row(
+          children: [
+            Expanded(
+              child: _buildOptionButton(
+                title: 'Summarize',
+                icon: Icons.summarize,
+                onTap: () => _selectOption('summarize'),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildOptionButton(
+                title: 'Translate',
+                icon: Icons.translate,
+                onTap: () => _selectOption('translate'),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildOptionButton(
+                title: 'Comment',
+                icon: Icons.comment,
+                onTap: () => _selectOption('comment'),
+              ),
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Show a button to view the original post instead of showing it directly
+        OutlinedButton.icon(
+          onPressed: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              builder: (context) => DraggableScrollableSheet(
+                initialChildSize: 0.6,
+                minChildSize: 0.3,
+                maxChildSize: 0.9,
+                expand: false,
+                builder: (context, scrollController) => SingleChildScrollView(
+                  controller: scrollController,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(2.5),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Original LinkedIn Post',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildPostCard(),
+                      ],
+                    ),
                   ),
                 ),
-          
-          const SizedBox(height: 20),
-          
-          Row(
-            children: [
-              Expanded(
-                child: _buildOptionButton(
-                  title: 'Summarize',
-                  icon: Icons.summarize,
-                  onTap: () => _selectOption('summarize'),
-                ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildOptionButton(
-                  title: 'Translate',
-                  icon: Icons.translate,
-                  onTap: () => _selectOption('translate'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildOptionButton(
-                  title: 'Comment',
-                  icon: Icons.comment,
-                  onTap: () => _selectOption('comment'),
-                ),
-                ),
-              ],
+            );
+          },
+          icon: const Icon(Icons.visibility),
+          label: const Text('View Original Post'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-            
-          const SizedBox(height: 24),
-          
-        _buildPostCard(),
+          ),
+        ),
       ],
     );
   }
@@ -1471,84 +1557,118 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
             
   Widget _buildPostCard() {
     return Card(
-      elevation: 2,
+      elevation: 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
-      margin: EdgeInsets.zero,
-      child: ExpansionTile(
-        title: Row(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              Icons.check_circle,
-              color: Theme.of(context).colorScheme.primary,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              "LinkedIn post detected",
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        initiallyExpanded: false,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Row(
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      radius: 16,
-                      child: Text(
-                        _postAuthor.isNotEmpty ? _postAuthor[0].toUpperCase() : 'U',
-                        style: const TextStyle(
-                          fontSize: 14,
+                // Simple avatar with first letter of author name
+                CircleAvatar(
+                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                  radius: 20,
+                  child: Text(
+                    _postAuthor.isNotEmpty ? _postAuthor[0].toUpperCase() : 'U',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _postAuthor.isEmpty ? 'LinkedIn User' : _postAuthor,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _postAuthor,
-                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            _postDate,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                
-                // Show image indicator if there are images
-                if (_postImages.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  _buildImagePreview(),
-                ],
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            // Format post content properly
+            SelectableText(
+              _formatPostContent(_postContent),
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            if (_postImages.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  _postImages[0],
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 150,
+                    width: double.infinity,
+                    color: Theme.of(context).colorScheme.surfaceVariant,
+                    child: Center(
+                      child: Icon(
+                        Icons.broken_image,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        size: 40,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
+  }
+  
+  // Helper method to format post content
+  String _formatPostContent(String content) {
+    if (content.isEmpty) {
+      return 'No content available';
+    }
+    
+    // Remove "...see more" text that often appears in LinkedIn posts
+    String cleanedContent = content.replaceAll('…see more', '');
+    
+    // Break into paragraphs for better readability if needed
+    if (!cleanedContent.contains('\n') && cleanedContent.length > 150) {
+      final sentences = cleanedContent.split(RegExp(r'(?<=[.!?])\s'));
+      if (sentences.length > 4) {
+        // Group sentences into paragraphs for better readability
+        List<String> paragraphs = [];
+        StringBuffer currentParagraph = StringBuffer();
+        
+        for (int i = 0; i < sentences.length; i++) {
+          currentParagraph.write(sentences[i]);
+          if (!sentences[i].endsWith(' ')) {
+            currentParagraph.write(' ');
+          }
+          
+          if ((i + 1) % 4 == 0 && i < sentences.length - 1) {
+            paragraphs.add(currentParagraph.toString().trim());
+            currentParagraph = StringBuffer();
+          }
+        }
+        
+        if (currentParagraph.isNotEmpty) {
+          paragraphs.add(currentParagraph.toString().trim());
+        }
+        
+        return paragraphs.join('\n\n');
+      }
+    }
+    
+    return cleanedContent;
   }
   
   Widget _buildImagePreview() {
@@ -1631,7 +1751,62 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
             
           const SizedBox(height: 24),
               
-          _buildPostCard(),
+          // Show a button to view the original post instead of showing it directly
+          OutlinedButton.icon(
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                builder: (context) => DraggableScrollableSheet(
+                  initialChildSize: 0.6,
+                  minChildSize: 0.3,
+                  maxChildSize: 0.9,
+                  expand: false,
+                  builder: (context, scrollController) => SingleChildScrollView(
+                    controller: scrollController,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Center(
+                            child: Container(
+                              width: 40,
+                              height: 5,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[300],
+                                borderRadius: BorderRadius.circular(2.5),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Original LinkedIn Post',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildPostCard(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.visibility),
+            label: const Text('View Original Post'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
             
           const SizedBox(height: 24),
             
@@ -1716,15 +1891,15 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
                   'Translate Post',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
-                      ),
                   ),
-                ],
-              ),
+                ),
+              ],
+            ),
             TextButton.icon(
               onPressed: () => setState(() => _selectedOption = ''),
               icon: const Icon(Icons.arrow_back, size: 16),
               label: const Text('Back'),
-          ),
+            ),
           ],
         ),
         
@@ -1764,10 +1939,7 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
         
         const SizedBox(height: 24),
         
-        _buildPostCard(),
-          
-        const SizedBox(height: 24),
-          
+        // Only show the translation result, not the original post
         _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _translation.isNotEmpty
@@ -1780,7 +1952,7 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                    children: [
                       Row(
                         children: [
                           CircleAvatar(
@@ -1791,42 +1963,57 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
                               size: 16,
                               color: Colors.white,
                             ),
-                    ),
-                    const SizedBox(width: 12),
+                          ),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               'Translation to ${_translationLanguageController.text}',
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    ),
-                  ],
-                ),
-                      
-                      const SizedBox(height: 16),
-                      
-                      Text(_translation),
-                      
-                      const SizedBox(height: 16),
-                      
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          Clipboard.setData(ClipboardData(text: _translation)).then((_) {
-                            ToastUtils.showSuccessToast('Translation copied to clipboard');
-                          });
-                        },
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Replace simple Text widget with properly formatted text
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: SelectableText(
+                          _translation,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                          textAlign: TextAlign.left,
                         ),
-                        icon: const Icon(Icons.copy, size: 16),
-                        label: const Text('Copy Translation'),
-            ),
-        ],
-      ),
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: _translation)).then((_) {
+                                  ToastUtils.showSuccessToast('Translation copied to clipboard');
+                                });
+                              },
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              icon: const Icon(Icons.copy, size: 16),
+                              label: const Text('Copy Translation'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               )
             : const SizedBox.shrink(),
@@ -1838,141 +2025,186 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                Icon(Icons.comment, color: Theme.of(context).colorScheme.primary),
-                  const SizedBox(width: 8),
-        Text(
-                  'Generate Comment',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              TextButton.icon(
-                onPressed: () => setState(() => _selectedOption = ''),
-                icon: const Icon(Icons.arrow_back, size: 16),
-                label: const Text('Back'),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Use the fancy dropdown field
-          _buildDropdownField(
-            label: 'Comment Tone',
-            hintText: 'Select the tone for your comment',
-            controller: _commentToneController,
-            icon: Icons.sentiment_satisfied_alt,
-            options: _availableCommentTones,
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Generate button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _isGeneratingComment ? null : () => _generateComment(),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                iconColor: Colors.white, // Explicitly set icon color
-              ),
-              icon: _isGeneratingComment ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-              ) : const Icon(Icons.smart_toy, color: Colors.white), // Explicitly set icon color
-              label: Text(_isGeneratingComment ? 'Generating...' : 'Generate Comment'),
-            ),
-          ),
-          
-          const SizedBox(height: 24),
-          
-        _buildPostCard(),
-        
-        const SizedBox(height: 24),
-        
-        // Only show generated comment if it's not empty
-        if (_generatedComment.isNotEmpty) ...[
-          Card(
-            elevation: 2,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-              padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                      radius: 16,
-                        child: const Icon(
-                          Icons.comment,
-                          size: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                          'AI-Generated Comment',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  Text(_generatedComment),
-                  
-                  const SizedBox(height: 16),
-                  
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          Clipboard.setData(ClipboardData(text: _generatedComment)).then((_) {
-                            ToastUtils.showSuccessToast('Comment copied to clipboard');
-                          });
-                        },
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        icon: const Icon(Icons.copy, size: 16),
-                        label: const Text('Copy'),
-                      ),
-                      
-                      TextButton.icon(
-                        onPressed: _isGeneratingComment ? null : _generateComment,
-                        icon: const Icon(Icons.refresh, size: 16),
-                        label: const Text('Regenerate'),
+                Icon(Icons.comment, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Comment Generator',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
-                ],
+            TextButton.icon(
+              onPressed: () => setState(() => _selectedOption = ''),
+              icon: const Icon(Icons.arrow_back, size: 16),
+              label: const Text('Back'),
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Use the fancy dropdown field
+        _buildDropdownField(
+          label: 'Comment Style',
+          hintText: 'Select the tone of the comment',
+          controller: _commentToneController,
+          icon: Icons.emoji_emotions,
+          options: _availableCommentTones,
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Generate button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _isGeneratingComment || _commentToneController.text.isEmpty ? null : () => _generateComment(),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
+              iconColor: Colors.white,
+            ),
+            icon: _isGeneratingComment ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            ) : const Icon(Icons.comment, color: Colors.white),
+            label: Text(_isGeneratingComment ? 'Generating...' : 'Generate Comment'),
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Show a button to view the original post instead of showing it directly
+        OutlinedButton.icon(
+          onPressed: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              builder: (context) => DraggableScrollableSheet(
+                initialChildSize: 0.6,
+                minChildSize: 0.3,
+                maxChildSize: 0.9,
+                expand: false,
+                builder: (context, scrollController) => SingleChildScrollView(
+                  controller: scrollController,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(2.5),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Original LinkedIn Post',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildPostCard(),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+          icon: const Icon(Icons.visibility),
+          label: const Text('View Original Post'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
-        ],
+        ),
+        
+        const SizedBox(height: 24),
+        
+        _isGeneratingComment
+            ? const Center(child: CircularProgressIndicator())
+            : _generatedComment.isNotEmpty
+                ? Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: Theme.of(context).colorScheme.primary,
+                                radius: 16,
+                                child: const Icon(
+                                  Icons.auto_awesome,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'AI-Generated Comment',
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          
+                          const SizedBox(height: 16),
+                          
+                          Text(_generatedComment),
+                          
+                          const SizedBox(height: 16),
+                          
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: _generatedComment)).then((_) {
+                                ToastUtils.showSuccessToast('Comment copied to clipboard');
+                              });
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            icon: const Icon(Icons.copy, size: 16),
+                            label: const Text('Copy Comment'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(),
       ],
     );
   }
@@ -1985,46 +2217,43 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
     
     setState(() {
       _isGeneratingComment = true;
+      _generatedComment = '';  // Clear previous comment while loading
     });
     
-    // Simulate API call delay
-    Future.delayed(const Duration(seconds: 2), () {
+    // Call the LinkedIn service to generate a real comment
+    final linkedInService = LinkedInService();
+    linkedInService.generateComment(
+      postContent: _postContent,
+      author: _postAuthor,
+      commentType: _commentToneController.text.toLowerCase(),
+      imageUrl: _postImages.isNotEmpty ? _postImages[0] : null,
+    ).then((result) {
       setState(() {
         _isGeneratingComment = false;
-        
-        // Extract a short excerpt of the post content for the comment
-        String excerpt = _postContent.length > 30 ? _postContent.substring(0, 30) + '...' : _postContent;
-        
-        // Generate different comments based on the selected tone
-        switch (_commentToneController.text) {
-          case 'Professional':
-            _generatedComment = "Thank you for sharing these valuable insights. Your points about $excerpt are particularly relevant in today's context. I appreciate your perspective on this topic.";
-            break;
-          case 'Friendly':
-            _generatedComment = "Love this post! The way you explained $excerpt really resonated with me. Thanks for sharing your thoughts on this!";
-            break;
-          case 'Enthusiastic':
-            _generatedComment = "Wow! This is exactly what I needed to read today! Your insights on $excerpt are absolutely game-changing. Can't wait to see more content like this!";
-            break;
-          case 'Thoughtful':
-            _generatedComment = "This post has given me a lot to reflect on. I've been considering the implications of $excerpt for some time, and your perspective adds a valuable dimension to the conversation.";
-            break;
-          case 'Questioning':
-            _generatedComment = "Interesting perspective. I'm curious to know more about how you arrived at these conclusions about $excerpt? Have you considered alternative viewpoints on this topic?";
-            break;
-          case 'Supportive':
-            _generatedComment = "I completely stand with you on this! Your points about $excerpt are spot-on and deserve more attention. Keep sharing these important insights!";
-            break;
-          default:
-            _generatedComment = "Thank you for sharing this thoughtful post. It provides valuable insights on an important topic.";
-        }
+        _generatedComment = result;
       });
       
       // Save to history with comment functionality
       _saveToHistoryWithComment();
       
       ToastUtils.showSuccessToast('Comment generated successfully');
+    }).catchError((error) {
+      setState(() {
+        _isGeneratingComment = false;
+        _generatedComment = 'Error generating comment: $error';
+      });
+      ToastUtils.showErrorToast('Failed to generate comment. Please try again.');
     });
+  }
+
+  // Helper method to launch URLs
+  Future<void> _launchUrl(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      ToastUtils.showErrorToast('Could not open LinkedIn post');
+    }
   }
 
   Widget _buildActionOption({

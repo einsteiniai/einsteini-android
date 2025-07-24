@@ -221,10 +221,14 @@ class _ThemeSelectionScreenState extends ConsumerState<ThemeSelectionScreen> {
           border: Border.all(
             color: isSelected
                 ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).dividerColor,
-            width: isSelected ? 2 : 1,
+                : Colors.transparent, // Changed from Theme.of(context).dividerColor to transparent
+            width: isSelected ? 2 : 0, // Changed from 1 to 0 for non-selected
           ),
           borderRadius: BorderRadius.circular(12),
+          // Add a subtle background color for better distinction without borders
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Theme.of(context).colorScheme.surface.withOpacity(0.5)
+              : Theme.of(context).colorScheme.surface.withOpacity(0.3),
         ),
         child: Row(
           children: [

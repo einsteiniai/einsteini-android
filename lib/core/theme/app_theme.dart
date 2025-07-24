@@ -19,8 +19,8 @@ class AppTheme {
   static const _successColor = Color(0xFF34C759);
   
   // Font families
-  static const String _spaceGroteskFontFamily = 'SpaceGrotesk';
-  static const String _interFontFamily = 'Inter';
+  static const String _primaryFontFamily = 'TikTokSans';
+  static const String _secondaryFontFamily = 'DMSans';
   
   static final ThemeData lightTheme = ThemeData(
     useMaterial3: true,
@@ -38,7 +38,7 @@ class AppTheme {
       onError: Colors.white,
     ),
     scaffoldBackgroundColor: _lightBackgroundColor,
-    fontFamily: _interFontFamily,
+    fontFamily: _secondaryFontFamily,
     appBarTheme: const AppBarTheme(
       backgroundColor: _lightBackgroundColor,
       foregroundColor: _lightTextColor,
@@ -46,7 +46,7 @@ class AppTheme {
       centerTitle: true,
       titleTextStyle: TextStyle(
         color: _lightTextColor,
-        fontFamily: _spaceGroteskFontFamily,
+        fontFamily: _primaryFontFamily,
         fontSize: 20,
         fontWeight: FontWeight.bold,
       ),
@@ -54,55 +54,55 @@ class AppTheme {
     textTheme: const TextTheme(
       headlineLarge: TextStyle(
         color: _lightTextColor,
-        fontFamily: _spaceGroteskFontFamily,
+        fontFamily: _primaryFontFamily,
         fontWeight: FontWeight.bold,
         fontSize: 32,
       ),
       headlineMedium: TextStyle(
         color: _lightTextColor,
-        fontFamily: _spaceGroteskFontFamily,
+        fontFamily: _primaryFontFamily,
         fontWeight: FontWeight.bold,
         fontSize: 24,
       ),
       headlineSmall: TextStyle(
         color: _lightTextColor,
-        fontFamily: _spaceGroteskFontFamily,
+        fontFamily: _primaryFontFamily,
         fontWeight: FontWeight.bold,
         fontSize: 20,
       ),
       titleLarge: TextStyle(
         color: _lightTextColor,
-        fontFamily: _spaceGroteskFontFamily,
+        fontFamily: _primaryFontFamily,
         fontWeight: FontWeight.w600,
         fontSize: 18,
       ),
       titleMedium: TextStyle(
         color: _lightTextColor,
-        fontFamily: _interFontFamily,
+        fontFamily: _secondaryFontFamily,
         fontWeight: FontWeight.w500,
         fontSize: 16,
       ),
       titleSmall: TextStyle(
         color: _lightTextColor,
-        fontFamily: _interFontFamily,
+        fontFamily: _secondaryFontFamily,
         fontWeight: FontWeight.w500,
         fontSize: 14,
       ),
       bodyLarge: TextStyle(
         color: _lightTextColor,
-        fontFamily: _interFontFamily,
+        fontFamily: _secondaryFontFamily,
         fontWeight: FontWeight.normal,
         fontSize: 16,
       ),
       bodyMedium: TextStyle(
         color: _lightTextColor,
-        fontFamily: _interFontFamily,
+        fontFamily: _secondaryFontFamily,
         fontWeight: FontWeight.normal,
         fontSize: 14,
       ),
       bodySmall: TextStyle(
         color: _lightSecondaryTextColor,
-        fontFamily: _interFontFamily,
+        fontFamily: _secondaryFontFamily,
         fontWeight: FontWeight.normal,
         fontSize: 12,
       ),
@@ -119,7 +119,7 @@ class AppTheme {
         iconColor: MaterialStateProperty.all(Colors.white),
         textStyle: MaterialStateProperty.all(const TextStyle(
           fontWeight: FontWeight.bold,
-          fontFamily: _spaceGroteskFontFamily,
+          fontFamily: _primaryFontFamily,
         )),
         elevation: MaterialStateProperty.all(0),
         padding: MaterialStateProperty.all(const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
@@ -174,7 +174,7 @@ class AppTheme {
         TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,
-          fontFamily: _interFontFamily,
+          fontFamily: _secondaryFontFamily,
         ),
       ),
     ),
@@ -196,7 +196,7 @@ class AppTheme {
       onError: Colors.white,
     ),
     scaffoldBackgroundColor: _darkBackgroundColor,
-    fontFamily: _interFontFamily,
+    fontFamily: _secondaryFontFamily,
     appBarTheme: const AppBarTheme(
       backgroundColor: _darkBackgroundColor,
       foregroundColor: _darkTextColor,
@@ -204,7 +204,7 @@ class AppTheme {
       centerTitle: true,
       titleTextStyle: TextStyle(
         color: _darkTextColor,
-        fontFamily: _spaceGroteskFontFamily,
+        fontFamily: _primaryFontFamily,
         fontSize: 20,
         fontWeight: FontWeight.bold,
       ),
@@ -212,55 +212,55 @@ class AppTheme {
     textTheme: const TextTheme(
       headlineLarge: TextStyle(
         color: _darkTextColor,
-        fontFamily: _spaceGroteskFontFamily,
+        fontFamily: _primaryFontFamily,
         fontWeight: FontWeight.bold,
         fontSize: 32,
       ),
       headlineMedium: TextStyle(
         color: _darkTextColor,
-        fontFamily: _spaceGroteskFontFamily,
+        fontFamily: _primaryFontFamily,
         fontWeight: FontWeight.bold,
         fontSize: 24,
       ),
       headlineSmall: TextStyle(
         color: _darkTextColor,
-        fontFamily: _spaceGroteskFontFamily,
+        fontFamily: _primaryFontFamily,
         fontWeight: FontWeight.bold,
         fontSize: 20,
       ),
       titleLarge: TextStyle(
         color: _darkTextColor,
-        fontFamily: _spaceGroteskFontFamily,
+        fontFamily: _primaryFontFamily,
         fontWeight: FontWeight.w600,
         fontSize: 18,
       ),
       titleMedium: TextStyle(
         color: _darkTextColor,
-        fontFamily: _interFontFamily,
+        fontFamily: _secondaryFontFamily,
         fontWeight: FontWeight.w500,
         fontSize: 16,
       ),
       titleSmall: TextStyle(
         color: _darkTextColor,
-        fontFamily: _interFontFamily,
+        fontFamily: _secondaryFontFamily,
         fontWeight: FontWeight.w500,
         fontSize: 14,
       ),
       bodyLarge: TextStyle(
         color: _darkTextColor,
-        fontFamily: _interFontFamily,
+        fontFamily: _secondaryFontFamily,
         fontWeight: FontWeight.normal,
         fontSize: 16,
       ),
       bodyMedium: TextStyle(
         color: _darkTextColor,
-        fontFamily: _interFontFamily,
+        fontFamily: _secondaryFontFamily,
         fontWeight: FontWeight.normal,
         fontSize: 14,
       ),
       bodySmall: TextStyle(
         color: _darkSecondaryTextColor,
-        fontFamily: _interFontFamily,
+        fontFamily: _secondaryFontFamily,
         fontWeight: FontWeight.normal,
         fontSize: 12,
       ),
@@ -277,7 +277,7 @@ class AppTheme {
         iconColor: MaterialStateProperty.all(Colors.white),
         textStyle: MaterialStateProperty.all(const TextStyle(
           fontWeight: FontWeight.bold,
-          fontFamily: _spaceGroteskFontFamily,
+          fontFamily: _primaryFontFamily,
         )),
         elevation: MaterialStateProperty.all(0),
         padding: MaterialStateProperty.all(const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
@@ -332,7 +332,7 @@ class AppTheme {
         TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,
-          fontFamily: _interFontFamily,
+          fontFamily: _secondaryFontFamily,
         ),
       ),
     ),

@@ -32,10 +32,13 @@ class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _nameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   bool _isSignUp = false;
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   final ApiService _apiService = ApiService();
   
   // Social login requirements
@@ -47,9 +50,9 @@ class _AuthScreenState extends State<AuthScreen> {
   
   // Microsoft auth settings
   final FlutterAppAuth _appAuth = const FlutterAppAuth();
-  final String _microsoftClientId = 'your-microsoft-client-id';
+  final String _microsoftClientId = '111eb0e3-8a6e-46c7-a3f0-55b4448e8ede';
   final String _microsoftRedirectUrl = 'com.einsteini.app://oauth/redirect';
-  final List<String> _microsoftScopes = ['openid', 'profile', 'email', 'offline_access'];
+  final List<String> _microsoftScopes = ['openid', 'profile', 'email', 'offline_access', 'User.Read'];
 
   // LinkedIn OAuth settings
   final String _linkedInClientId = 'your-linkedin-client-id';
@@ -67,7 +70,9 @@ class _AuthScreenState extends State<AuthScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _nameController.dispose();
+    _lastNameController.dispose();
     super.dispose();
   }
 
@@ -87,38 +92,82 @@ class _AuthScreenState extends State<AuthScreen> {
     });
 
     try {
+      // Show loading toast for better feedback
+      if (mounted) {
+        ToastUtils.showInfoToast(_isSignUp ? 'Creating account...' : 'Logging in...');
+      }
+      
+      // Trim email and password to prevent whitespace issues
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+      
       Map<String, dynamic> result;
       
       if (_isSignUp) {
         // Sign up flow
         result = await _apiService.signup(
-          name: _nameController.text,
-          email: _emailController.text,
-          password: _passwordController.text,
+          name: _nameController.text.trim() + ' ' + _lastNameController.text.trim(),
+          email: email,
+          password: password,
         );
       } else {
         // Login flow
         result = await _apiService.login(
-          email: _emailController.text,
-          password: _passwordController.text,
+          email: email,
+          password: password,
         );
       }
       
-      if (result['success']) {
       if (mounted) {
+        // Clear the loading state regardless of outcome
+        setState(() {
+          _isLoading = false;
+        });
+      }
+      
+      // Check if verification is required
+      if (result.containsKey('requireVerification') && result['requireVerification'] == true) {
+        if (mounted) {
+          ToastUtils.showInfoToast(result['message']);
+          // Navigate to verification screen
+          context.pushNamed(
+            'verify_account',
+            extra: {
+              'email': email,
+            },
+          );
+        }
+        return;
+      }
+      
+      if (result['success']) {
+        if (mounted) {
           ToastUtils.showSuccessToast(result['message']);
-        context.go(router.AppRoutes.home);
+          
+          // If this was a signup, show the plans screen
+          if (_isSignUp) {
+            context.pushNamed(
+              'plans',
+              extra: {
+                'isNewUser': true,
+              },
+            );
+          } else {
+            // Otherwise go straight to home
+            context.go(router.AppRoutes.home);
+          }
         }
       } else {
         if (mounted) {
-          ToastUtils.showErrorToast(result['message']);
-          setState(() {
-            _isLoading = false;
-          });
+          // Show the specific error message
+          ToastUtils.showErrorToast(result['message'] ?? 'Authentication failed');
         }
       }
     } catch (error) {
       if (mounted) {
+        // Log the error for debugging
+        debugPrint('Authentication error: $error');
+        
         ToastUtils.showErrorToast('Authentication failed: $error');
         setState(() {
           _isLoading = false;
@@ -150,7 +199,26 @@ class _AuthScreenState extends State<AuthScreen> {
 
   String? _validateName(String? value) {
     if (_isSignUp && (value == null || value.isEmpty)) {
-      return 'Name is required';
+      return 'First name is required';
+    }
+    return null;
+  }
+  
+  String? _validateLastName(String? value) {
+    if (_isSignUp && (value == null || value.isEmpty)) {
+      return 'Last name is required';
+    }
+    return null;
+  }
+
+  String? _validateConfirmPassword(String? value) {
+    if (_isSignUp) {
+      if (value == null || value.isEmpty) {
+        return 'Please confirm your password';
+      }
+      if (value != _passwordController.text) {
+        return 'Passwords do not match';
+      }
     }
     return null;
   }
@@ -208,16 +276,67 @@ class _AuthScreenState extends State<AuthScreen> {
                         TextFormField(
                           controller: _nameController,
                           decoration: InputDecoration(
-                            labelText: 'Full Name',
-                            hintText: 'Enter your name',
+                            labelText: 'First Name',
+                            hintText: 'Enter your first name',
                             prefixIcon: const Icon(Icons.person),
+                            // Remove outline border and use filled style instead
+                            filled: true,
+                            fillColor: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey[800]!.withOpacity(0.5)
+                                : Colors.grey[100]!.withOpacity(0.7),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none, // Remove the border
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none, // Remove the border
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).colorScheme.primary,
+                                width: 1.5,
+                              ),
                             ),
                           ),
                           textInputAction: TextInputAction.next,
                           validator: _validateName,
                         ).animate().fadeIn(duration: 600.ms, delay: 400.ms),
+                      
+                      if (_isSignUp) const SizedBox(height: 16),
+                      
+                      if (_isSignUp)
+                        TextFormField(
+                          controller: _lastNameController,
+                          decoration: InputDecoration(
+                            labelText: 'Last Name',
+                            hintText: 'Enter your last name',
+                            prefixIcon: const Icon(Icons.person_outline),
+                            // Remove outline border and use filled style instead
+                            filled: true,
+                            fillColor: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey[800]!.withOpacity(0.5)
+                                : Colors.grey[100]!.withOpacity(0.7),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none, // Remove the border
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none, // Remove the border
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).colorScheme.primary,
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                          textInputAction: TextInputAction.next,
+                          validator: _validateLastName,
+                        ).animate().fadeIn(duration: 600.ms, delay: 450.ms),
                       
                       if (_isSignUp) const SizedBox(height: 16),
                       
@@ -227,8 +346,25 @@ class _AuthScreenState extends State<AuthScreen> {
                           labelText: 'Email',
                           hintText: 'Enter your email',
                           prefixIcon: const Icon(Icons.email),
+                          // Remove outline border and use filled style instead
+                          filled: true,
+                          fillColor: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[800]!.withOpacity(0.5)
+                              : Colors.grey[100]!.withOpacity(0.7),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none, // Remove the border
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none, // Remove the border
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 1.5,
+                            ),
                           ),
                         ),
                         keyboardType: TextInputType.emailAddress,
@@ -254,26 +390,84 @@ class _AuthScreenState extends State<AuthScreen> {
                               });
                             },
                           ),
+                          // Remove outline border and use filled style instead
+                          filled: true,
+                          fillColor: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[800]!.withOpacity(0.5)
+                              : Colors.grey[100]!.withOpacity(0.7),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none, // Remove the border
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none, // Remove the border
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 1.5,
+                            ),
                           ),
                         ),
                         obscureText: _obscurePassword,
-                        textInputAction: TextInputAction.done,
+                        textInputAction: TextInputAction.next,
                         validator: _validatePassword,
                       ).animate().fadeIn(duration: 600.ms, delay: _isSignUp ? 600.ms : 500.ms),
+                      
+                      if (_isSignUp) const SizedBox(height: 16),
+                      
+                      if (_isSignUp)
+                        TextFormField(
+                          controller: _confirmPasswordController,
+                          decoration: InputDecoration(
+                            labelText: 'Confirm Password',
+                            hintText: 'Confirm your password',
+                            prefixIcon: const Icon(Icons.lock),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscureConfirmPassword = !_obscureConfirmPassword;
+                                });
+                              },
+                            ),
+                            // Remove outline border and use filled style instead
+                            filled: true,
+                            fillColor: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey[800]!.withOpacity(0.5)
+                                : Colors.grey[100]!.withOpacity(0.7),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none, // Remove the border
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none, // Remove the border
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).colorScheme.primary,
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                          obscureText: _obscureConfirmPassword,
+                          textInputAction: TextInputAction.done,
+                          validator: _validateConfirmPassword,
+                        ).animate().fadeIn(duration: 600.ms, delay: _isSignUp ? 700.ms : 600.ms),
                       
                       if (!_isSignUp)
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
-                              // Handle forgot password
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Password reset link sent to your email'),
-                                ),
-                              );
+                              // Navigate to forgot password screen
+                              context.pushNamed('forgot_password');
                             },
                             child: const Text('Forgot Password?'),
                           ),
@@ -300,7 +494,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               )
                             : Text(_isSignUp ? 'Sign Up' : 'Login'),
                         ),
-                      ).animate().fadeIn(duration: 600.ms, delay: 700.ms),
+                      ).animate().fadeIn(duration: 600.ms, delay: _isSignUp ? 800.ms : 700.ms),
                       
                       const SizedBox(height: 16),
                       
@@ -318,7 +512,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             child: Text(_isSignUp ? 'Login' : 'Sign Up'),
                           ),
                         ],
-                      ).animate().fadeIn(duration: 600.ms, delay: 800.ms),
+                      ).animate().fadeIn(duration: 600.ms, delay: _isSignUp ? 900.ms : 800.ms),
                     ],
                   ),
                 ),
@@ -356,7 +550,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       ],
                     ),
                   ],
-                ).animate().fadeIn(duration: 600.ms, delay: 900.ms),
+                ).animate().fadeIn(duration: 600.ms, delay: _isSignUp ? 1000.ms : 900.ms),
               ],
             ),
           ),
@@ -377,10 +571,10 @@ class _AuthScreenState extends State<AuthScreen> {
         width: 60,
         height: 60,
         decoration: BoxDecoration(
-          border: Border.all(
-            color: Theme.of(context).dividerTheme.color ?? Colors.grey[300]!,
-            width: 1,
-          ),
+          // Replace border with a subtle background color
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.grey[800]!.withOpacity(0.5)
+              : Colors.grey[100]!.withOpacity(0.7),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
@@ -523,12 +717,53 @@ class _AuthScreenState extends State<AuthScreen> {
       await _secureStorage.write(key: 'microsoft_access_token', value: result.accessToken);
       await _secureStorage.write(key: 'microsoft_id_token', value: result.idToken);
       
-      // Decode the ID token to get user information
+      // Get user information from Microsoft Graph API
       String name = '';
       String email = '';
       String? photoUrl;
       
-      if (result.idToken != null) {
+      if (result.accessToken != null) {
+        try {
+          // Call Microsoft Graph API to get user profile
+          final response = await http.get(
+            Uri.parse('https://graph.microsoft.com/v1.0/me'),
+            headers: {
+              'Authorization': 'Bearer ${result.accessToken}',
+              'Content-Type': 'application/json',
+            },
+          );
+          
+          if (response.statusCode == 200) {
+            final Map<String, dynamic> userData = json.decode(response.body);
+            name = userData['displayName'] ?? '';
+            email = userData['userPrincipalName'] ?? userData['mail'] ?? '';
+            
+            // Try to get profile photo if available (this is a separate API call)
+            try {
+              final photoResponse = await http.get(
+                Uri.parse('https://graph.microsoft.com/v1.0/me/photo/\$value'),
+                headers: {
+                  'Authorization': 'Bearer ${result.accessToken}',
+                },
+              );
+              
+              if (photoResponse.statusCode == 200) {
+                // Convert photo bytes to base64 for storage
+                final String base64Photo = base64Encode(photoResponse.bodyBytes);
+                photoUrl = 'data:image/jpeg;base64,$base64Photo';
+              }
+            } catch (e) {
+              // Photo fetch failed, but we can continue without it
+              debugPrint('Microsoft photo fetch error: $e');
+            }
+          } else {
+            debugPrint('Microsoft Graph API error: ${response.statusCode}');
+          }
+        } catch (e) {
+          debugPrint('Error fetching Microsoft user data: $e');
+        }
+      } else if (result.idToken != null) {
+        // Fallback to ID token if we couldn't get data from Graph API
         try {
           final Map<String, dynamic> decodedToken = JwtDecoder.decode(result.idToken!);
           name = decodedToken['name'] ?? '';

@@ -24,6 +24,14 @@ class PermissionReminderBox extends StatelessWidget {
     IconData icon;
     String route;
 
+    // We only handle overlay permission now
+    title = 'Display Over Other Apps';
+    description = 'Grant permission to display over other apps to get AI assistance directly in LinkedIn';
+    buttonText = 'Enable Now';
+    icon = Icons.layers;
+    route = router.AppRoutes.overlayPermission;
+    
+    /* Removed switch statement since we only have one case
     switch (permission) {
       case AppPermission.overlay:
         title = 'Display Over Other Apps';
@@ -40,6 +48,7 @@ class PermissionReminderBox extends StatelessWidget {
         route = router.AppRoutes.accessibilityPermission;
         break;
     }
+    */
 
     return Card(
       elevation: 2,

@@ -4,28 +4,58 @@
     <item>
         <shape>
             <corners 
-                android:topLeftRadius="20dp" 
-                android:topRightRadius="20dp" />
+                android:topLeftRadius="28dp" 
+                android:topRightRadius="28dp" />
             <padding 
                 android:bottom="1dp"
                 android:left="1dp"
                 android:right="1dp"
                 android:top="1dp" />
-            <solid android:color="#20000000" />
+            <solid android:color="#33000000" />
         </shape>
     </item>
     
-    <!-- Background with subtle gradient -->
+    <!-- Background with modern gradient -->
     <item>
         <shape>
             <corners 
-                android:topLeftRadius="20dp" 
-                android:topRightRadius="20dp" />
+                android:topLeftRadius="28dp" 
+                android:topRightRadius="28dp" />
             <gradient
-                android:angle="270"
-                android:endColor="#0D1017"
-                android:startColor="#121827"
+                android:angle="315"
+                android:endColor="#101624"
+                android:centerColor="#16192b"
+                android:startColor="#1e2133"
                 android:type="linear" />
+        </shape>
+    </item>
+    
+    <!-- Top border glow -->
+    <item android:top="1dp" android:left="12dp" android:right="12dp">
+        <shape>
+            <size android:height="2dp" />
+            <corners
+                android:topLeftRadius="28dp"
+                android:topRightRadius="28dp" />
+            <gradient
+                android:angle="0"
+                android:startColor="#3390AFFF" 
+                android:centerColor="#33BD79FF"
+                android:endColor="#3390AFFF"
+                android:type="linear" />
+        </shape>
+    </item>
+    
+    <!-- Side borders -->
+    <item android:left="1dp" android:right="1dp" android:top="3dp">
+        <shape>
+            <corners
+                android:topLeftRadius="28dp"
+                android:topRightRadius="28dp" />
+            <stroke
+                android:width="0.5dp"
+                android:color="#26BD79FF" />
+            <solid android:color="#00000000" />
         </shape>
     </item>
 </layer-list> 

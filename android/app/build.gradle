@@ -40,7 +40,7 @@ android {
     defaultConfig {
         applicationId = "com.einsteini.app"
         minSdk = 23 // Ensure compatibility
-        targetSdk = 33 // Target a stable SDK version
+        targetSdk = 35 // Updated to target API level 35 for Play Store requirement
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         
@@ -76,9 +76,18 @@ android {
             } else {
                 signingConfig signingConfigs.debug
             }
-            minifyEnabled false
-            shrinkResources false
+            // Enable minification to generate mapping file
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            
+            // Generate the mapping file for deobfuscation
+            testProguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            
+            // Enable native debug symbols
+            ndk {
+                debugSymbolLevel 'FULL'
+            }
         }
     }
 }
@@ -90,7 +99,19 @@ flutter {
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.7.10"
     implementation 'androidx.cardview:cardview:1.0.0'
-    implementation 'com.google.android.play:core:1.10.3'
-    implementation 'androidx.security:security-crypto:1.1.0-alpha06' // Add security library
-    implementation 'com.google.android.material:material:1.9.0' // Material Components
+    
+    // Use only feature-delivery which includes the necessary Play Core components
+    // Use version 2.0.0+ for Android 14 compatibility
+    implementation 'com.google.android.play:feature-delivery:2.1.0'
+    
+    // Remove older core-ktx dependency which is incompatible with Android 14
+    // implementation ('com.google.android.play:core-ktx:1.8.1') {
+    //     exclude group: 'com.google.android.play', module: 'core'
+    // }
+    
+    // Optional: Add the newer Play Feature Delivery KTX if Kotlin extensions are needed
+    implementation 'com.google.android.play:feature-delivery-ktx:2.1.0'
+    
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'  // Security library
+    implementation 'com.google.android.material:material:1.9.0'       // Material Components
 }

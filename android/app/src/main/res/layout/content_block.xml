@@ -1,29 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="16dp"
-    android:layout_marginTop="8dp"
-    android:background="#1A2235">
+    android:layout_marginVertical="8dp"
+    android:layout_marginHorizontal="4dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="3dp"
+    app:cardBackgroundColor="#1A2235">
 
-    <TextView
-        android:id="@+id/block_title"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Block Title"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textColor="#BD79FF"
-        android:fontFamily="@font/space_grotesk" />
+        android:orientation="vertical"
+        android:padding="0dp">
 
-    <TextView
-        android:id="@+id/block_content"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Block content goes here"
-        android:textColor="#FFFFFF"
-        android:fontFamily="@font/inter" />
+        <!-- Header with accent gradient background -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="20dp"
+            android:paddingBottom="12dp">
 
-</LinearLayout> 
+            <TextView
+                android:id="@+id/block_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Block Title"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#BD79FF"
+                android:fontFamily="@font/dm_sans" />
+
+            <View
+                android:layout_width="40dp"
+                android:layout_height="3dp"
+                android:background="#BD79FF"
+                android:layout_marginTop="8dp"/>
+        </LinearLayout>
+
+        <!-- Content section -->
+        <TextView
+            android:id="@+id/block_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="20dp"
+            android:text="Block content goes here"
+            android:textSize="15sp"
+            android:lineSpacingMultiplier="1.2"
+            android:textColor="#FFFFFF"
+            android:fontFamily="@font/dm_sans" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView> 

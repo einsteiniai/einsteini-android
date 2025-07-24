@@ -38,20 +38,20 @@
     
     <!-- Custom text styles for overlay content -->
     <style name="EinsteiniOverlayTitle">
-        <item name="android:fontFamily">@font/space_grotesk</item>
+        <item name="android:fontFamily">@font/dm_sans</item>
         <item name="android:textSize">18sp</item>
         <item name="android:textStyle">bold</item>
         <item name="android:textColor">#BD79FF</item>
     </style>
     
     <style name="EinsteiniOverlayTabText">
-        <item name="android:fontFamily">@font/space_grotesk</item>
+        <item name="android:fontFamily">@font/dm_sans</item>
         <item name="android:textSize">16sp</item>
         <item name="android:textStyle">bold</item>
     </style>
     
     <style name="EinsteiniOverlayBodyText">
-        <item name="android:fontFamily">@font/inter</item>
+        <item name="android:fontFamily">@font/dm_sans</item>
         <item name="android:textSize">14sp</item>
         <item name="android:textColor">#FFFFFF</item>
         <item name="android:lineSpacingMultiplier">1.2</item>
@@ -59,7 +59,7 @@
 
     <!-- Button style with modern look -->
     <style name="EinsteiniOverlayButton" parent="Widget.MaterialComponents.Button">
-        <item name="android:fontFamily">@font/space_grotesk</item>
+        <item name="android:fontFamily">@font/dm_sans</item>
         <item name="android:textSize">15sp</item>
         <item name="android:textStyle">bold</item>
         <item name="android:textAllCaps">false</item>
@@ -77,7 +77,7 @@
         <item name="android:background">@drawable/spinner_background</item>
         <item name="android:popupBackground">#1E293B</item>
         <item name="android:padding">12dp</item>
-        <item name="android:fontFamily">@font/inter</item>
+        <item name="android:fontFamily">@font/dm_sans</item>
     </style>
 
     <!-- Card style for content sections -->

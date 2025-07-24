@@ -4,8 +4,9 @@
     <!-- Permissions with descriptions to explain why they're needed -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" 
                      android:description="@string/permission_overlay_desc" />
-    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" 
-                     android:description="@string/permission_accessibility_desc" />
+    <!-- Commented out accessibility service permission -->
+    <!-- <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" 
+                     android:description="@string/permission_accessibility_desc" /> -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
@@ -89,7 +90,8 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
-        <!-- Declare our accessibility service -->
+        <!-- Comment out the accessibility service -->
+        <!--
         <service
             android:name="com.einsteini.app.EinsteiniAccessibilityService"
             android:label="@string/accessibility_service_name"
@@ -103,6 +105,7 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
         </service>
+        -->
         
         <!-- Declare our overlay service -->
         <service

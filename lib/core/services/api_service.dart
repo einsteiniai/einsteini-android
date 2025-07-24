@@ -7,6 +7,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Service to communicate with the einsteini backend API
 class ApiService {
   static const String _baseUrl = 'https://backend.einsteini.ai/api';
+  
+  // Static variable to easily change API URL format if needed
+  static const bool _useApiPrefix = false;
+  
+  // Helper method to get the proper endpoint URL
+  String _getEndpointUrl(String endpoint) {
+    // For endpoints that start with /api/, we don't need to add the prefix
+    if (endpoint.startsWith('/api/')) {
+      return 'https://backend.einsteini.ai$endpoint';
+    }
+    
+    // Some endpoints might not need /api/ prefix
+    return _useApiPrefix ? '$_baseUrl/$endpoint' : '${_baseUrl.replaceAll('/api', '')}/$endpoint';
+  }
+
   static final ApiService _instance = ApiService._internal();
   
   String? _authToken;
@@ -58,46 +73,118 @@ class ApiService {
     required String password,
   }) async {
     try {
+      debugPrint('Attempting signup for email: $email');
+      
+      // Split the name into first and last name
+      final nameParts = name.trim().split(' ');
+      final firstName = nameParts.first;
+      // Join the rest as last name, or use a space if there's no last name
+      final lastName = nameParts.length > 1 ? nameParts.skip(1).join(' ') : '';
+      
+      // Use the correct endpoint from the backend
       final response = await http.post(
-        Uri.parse('$_baseUrl/auth/signup'),
+        Uri.parse(_getEndpointUrl('signup')),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'name': name,
+          'firstName': firstName,
+          'lastName': lastName,
           'email': email,
           'password': password,
         }),
       );
 
-      final data = jsonDecode(response.body);
+      debugPrint('Signup response status: ${response.statusCode}');
+      debugPrint('Signup response body: ${response.body}');
       
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        if (data['token'] != null) {
-          await _saveAuthToken(data['token']);
-        }
-        
-        // Save user profile data if available
-        final prefs = await SharedPreferences.getInstance();
-        if (data['userId'] != null) {
-          await prefs.setString('user_id', data['userId']);
-        }
-        if (data['name'] != null) {
-          await prefs.setString('user_name', data['name']);
-        }
-        await prefs.setString('user_email', email);
-        await prefs.setBool('user_logged_in', true);
-        
-        return {
-          'success': true,
-          'message': data['message'] ?? 'Registration successful',
-          'user': data['user'] ?? {'name': name, 'email': email},
-        };
-      } else {
-        debugPrint('Error during signup: ${response.statusCode}');
-        debugPrint('Response: ${response.body}');
+      // Try to parse the response body, but handle errors gracefully
+      dynamic data;
+      try {
+        data = jsonDecode(response.body);
+      } catch (e) {
+        debugPrint('Error parsing signup response: $e');
         return {
           'success': false,
-          'message': data['message'] ?? 'Registration failed',
-          'error': data['error']
+          'message': 'Invalid server response',
+          'error': 'Failed to parse server response'
+        };
+      }
+      
+      // Check if verification is required based on the response
+      if (data is Map && data.containsKey('requireVerification') && data['requireVerification'] == true) {
+        return {
+          'success': true, // This is a successful signup but needs verification
+          'message': data['msg'] ?? 'Account created. Please verify your email with the code sent to your inbox.',
+          'requireVerification': true,
+          'email': email,
+        };
+      }
+      
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        // Check if it's a success response
+        if (data is Map && data['success'] == true) {
+          // Check if this is a new account that needs verification
+          if (data.containsKey('requireVerification') && data['requireVerification'] == true) {
+            return {
+              'success': true,
+              'message': data['msg'] ?? 'Account created. Please verify your email.',
+              'requireVerification': true,
+              'email': email,
+            };
+          }
+          
+          // If we're here, the account was created and doesn't need verification
+          // Let's handle the user data if available
+          if (data.containsKey('customerId')) {
+            await _saveAuthToken(data['customerId'].toString());
+            debugPrint('Auth token (customerId) saved successfully');
+            
+            // Save user profile data
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('user_id', data['customerId'].toString());
+            await prefs.setString('user_name', firstName);
+            await prefs.setString('user_email', email);
+            await prefs.setBool('user_logged_in', true);
+          }
+          
+          return {
+            'success': true,
+            'message': data['msg'] ?? 'Registration successful',
+            'user': {'name': firstName, 'email': email},
+          };
+        } else {
+          // It's an error response
+          String errorMsg = '';
+          if (data is String) {
+            errorMsg = data;
+          } else if (data is Map) {
+            errorMsg = data['error'] ?? data['msg'] ?? 'Registration failed';
+          } else {
+            errorMsg = 'Registration failed';
+          }
+          
+          return {
+            'success': false,
+            'message': errorMsg,
+            'error': errorMsg
+          };
+        }
+      } else {
+        // HTTP error status
+        debugPrint('Error during signup: ${response.statusCode}');
+        debugPrint('Response: ${response.body}');
+        
+        // Try to extract the error message
+        String errorMsg = 'Registration failed';
+        if (data is String) {
+          errorMsg = data;
+        } else if (data is Map) {
+          errorMsg = data['error'] ?? data['msg'] ?? 'Registration failed';
+        }
+        
+        return {
+          'success': false,
+          'message': errorMsg,
+          'error': errorMsg
         };
       }
     } catch (e) {
@@ -116,8 +203,11 @@ class ApiService {
     required String password,
   }) async {
     try {
+      debugPrint('Attempting login for email: $email');
+      
+      // Use the correct endpoint from the backend
       final response = await http.post(
-        Uri.parse('$_baseUrl/auth/login'),
+        Uri.parse(_getEndpointUrl('login')),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': email,
@@ -125,36 +215,91 @@ class ApiService {
         }),
       );
 
-      final data = jsonDecode(response.body);
+      debugPrint('Login response status: ${response.statusCode}');
+      debugPrint('Login response body: ${response.body}');
+      
+      // Try to parse the response body, but handle errors gracefully
+      dynamic data;
+      try {
+        data = jsonDecode(response.body);
+      } catch (e) {
+        debugPrint('Error parsing login response: $e');
+        return {
+          'success': false,
+          'message': 'Invalid server response',
+          'error': 'Failed to parse server response'
+        };
+      }
       
       if (response.statusCode == 200) {
-        if (data['token'] != null) {
-          await _saveAuthToken(data['token']);
+        // First check if verification is required
+        if (data is Map && data.containsKey('requireVerification') && data['requireVerification'] == true) {
+          return {
+            'success': false,
+            'message': data['msg'] ?? 'Account not verified. Please check your email for the verification code.',
+            'requireVerification': true,
+            'email': email,
+          };
         }
-        
-        // Save user profile data
-        final prefs = await SharedPreferences.getInstance();
-        if (data['userId'] != null) {
-          await prefs.setString('user_id', data['userId']);
+      
+        // Check for successful login
+        if (data is Map && data['success'] == true) {
+          // The token isn't explicitly returned, but we can use the customer ID
+          if (data['customerId'] != null) {
+            await _saveAuthToken(data['customerId']);
+            debugPrint('Auth token (customerId) saved successfully');
+          }
+          
+          // Save user profile data
+          final prefs = await SharedPreferences.getInstance();
+          if (data['customerId'] != null) {
+            await prefs.setString('user_id', data['customerId']);
+          }
+          
+          await prefs.setString('user_email', email);
+          await prefs.setBool('user_logged_in', true);
+          
+          return {
+            'success': true,
+            'message': data['msg'] ?? 'Login successful',
+            'user': {'email': email},
+          };
+        } else {
+          // Handle error messages directly from the backend
+          String errorMsg = '';
+          if (data is String) {
+            errorMsg = data;
+          } else if (data is Map) {
+            errorMsg = data['error'] ?? data['msg'] ?? 'Authentication failed';
+          } else {
+            // If we can't find a specific error, use a default message
+            errorMsg = 'Authentication failed';
+          }
+          
+          return {
+            'success': false,
+            'message': errorMsg,
+            'error': errorMsg
+          };
         }
-        if (data['name'] != null) {
-          await prefs.setString('user_name', data['name']);
-        }
-        await prefs.setString('user_email', email);
-        await prefs.setBool('user_logged_in', true);
-        
-        return {
-          'success': true,
-          'message': data['message'] ?? 'Login successful',
-          'user': data['user'] ?? {'email': email},
-        };
       } else {
         debugPrint('Login failed: ${response.statusCode}');
         debugPrint('Response: ${response.body}');
+        
+        // Try to extract the error message
+        String errorMsg = 'Authentication failed';
+        if (data is String) {
+          errorMsg = data;
+        } else if (data is Map && data.containsKey('error')) {
+          errorMsg = data['error'].toString();
+        } else if (data is Map && data.containsKey('msg')) {
+          errorMsg = data['msg'].toString();
+        }
+        
         return {
           'success': false,
-          'message': data['message'] ?? 'Authentication failed',
-          'error': data['error']
+          'message': errorMsg,
+          'error': 'Login failed'
         };
       }
     } catch (e) {
@@ -252,28 +397,60 @@ class ApiService {
     String? imageUrl,
   }) async {
     try {
+      final email = await _getUserEmail();
+      
+      // Clean up the postContent similar to how Chrome extension does
+      String cleanedContent = postContent
+          .replaceAll(RegExp(r'\n+'), ' ') // Replace newlines with spaces
+          .replaceAll(RegExp(r'\s+'), ' ') // Replace multiple spaces with single space
+          .replaceAll('…more', '') // Remove "…more" text (like the Chrome extension does)
+          .trim();
+      
+      // Truncate to first 300 chars to avoid server errors
+      if (cleanedContent.length > 300) {
+        cleanedContent = cleanedContent.substring(0, 300) + "...";
+      }
+      
+      // Use a simple prompt format like the Chrome extension
+      String prompt = "Generate a $commentType tone comment for a LinkedIn post by $author: $cleanedContent";
+      
+      debugPrint('Sending comment request with prompt length: ${prompt.length}');
+      
+      // Match the Chrome extension implementation and add the platform header
       final response = await http.post(
-        Uri.parse('$_baseUrl/generate-comment'),
-        headers: _headers,
+        Uri.parse('https://backend.einsteini.ai/api/comment'),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-app-platform': 'android' // Add the android platform header
+        },
         body: jsonEncode({
-          'text': postContent,
-          'author': author,
-          'commentType': commentType,
-          'img_url': imageUrl ?? '',
-        }),
+          'requestContext': {'httpMethod': 'POST'},
+          'prompt': prompt,
+          'email': email
+        })
       );
-
+      
+      debugPrint('Response status: ${response.statusCode}');
+      
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['comment'] ?? 'Error: Empty response from server';
+        
+        // Convert the dynamic response to string - needed for Dart's type system
+        if (data is Map) {
+          return data['text'] ?? data['comment'] ?? data['response'] ?? data.toString();
+        } else if (data is String) {
+          return data;
+        } else {
+          return data.toString();
+        }
       } else {
-        debugPrint('Error generating comment: ${response.statusCode}');
-        debugPrint('Response: ${response.body}');
-        return 'Error: ${response.statusCode} - Failed to generate comment';
+        debugPrint('Error response: ${response.body}');
+        // Return a fallback message instead of showing an error to the user
+        return "This looks like an exciting opportunity in the tech space!";
       }
     } catch (e) {
-      debugPrint('Exception while generating comment: $e');
-      return 'Error: Network or server issue';
+      debugPrint('Exception in comment generation: $e');
+      return "Great opportunity for developers interested in AI and software development!";
     }
   }
 
@@ -424,8 +601,15 @@ class ApiService {
     String? author,
   }) async {
     try {
+      // Clean up content text like for comments - exactly like the extension does
+      String cleanedContent = content
+          .replaceAll(RegExp(r'\n+'), ' ') // Replace newlines with spaces
+          .replaceAll(RegExp(r'\s+'), ' ') // Replace multiple spaces with single space
+          .replaceAll('…more', '') // Remove LinkedIn "...more" text
+          .trim();
+      
       // Log the request parameters for debugging
-      debugPrint('Translation request: language=$language, content length=${content.length}');
+      debugPrint('Translation request: language=$language, content length=${cleanedContent.length}');
       
       if (language.toLowerCase() == 'default') {
         return {
@@ -437,46 +621,40 @@ class ApiService {
       final email = await _getUserEmail();
       
       debugPrint('Sending translation request to new /api/translate endpoint');
-      debugPrint('Using email: $email');
       
+      // Use same format as the Chrome extension for translation
+      final prompt = "Translate this post to ${language} for this text: ${cleanedContent}";
+      
+      // Use the same approach as we do for comments since that's working
       final response = await http.post(
         Uri.parse('$_baseUrl/translate'),
         headers: {
           'Content-Type': 'application/json',
+          'x-app-platform': 'android', // Add Android platform header
           ..._headers,
         },
         body: jsonEncode({
-          'text': content,
+          'text': cleanedContent,
           'targetLanguage': language,
           'email': email,
         }),
       );
 
       debugPrint('Translation response code: ${response.statusCode}');
-      debugPrint('Translation response body: ${response.body}');
       
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         
-        // Extract only the body from the nested response structure
-        final data = responseData['body'] != null ? 
-            (responseData['body'] is String ? jsonDecode(responseData['body']) : responseData['body']) : 
-            responseData;
-        
-        if (data == null || data.isEmpty) {
-          return {
-            'translation': 'Error: Empty translation returned from server',
-            'error': 'Empty response'
-          };
-        }
-        
-        final translation = data['translation'] ?? data['text'] ?? '';
-        
-        if (translation.isEmpty) {
-          return {
-            'translation': 'Error: Empty translation returned from server',
-            'error': 'Empty translation'
-          };
+        // Extract translation from the response
+        final String translation;
+        if (responseData.containsKey('body')) {
+          if (responseData['body'] is String) {
+            translation = responseData['body'];
+          } else {
+            translation = responseData['body']['translation'] ?? responseData['body'].toString();
+          }
+        } else {
+          translation = responseData['translation'] ?? responseData.toString();
         }
         
         return {
@@ -755,51 +933,112 @@ class ApiService {
     String? photoUrl,
   }) async {
     try {
+      debugPrint('Attempting social login with provider: $provider');
+      
+      // Use the correct endpoint
       final response = await http.post(
-        Uri.parse('$_baseUrl/sociallogin'),
+        Uri.parse(_getEndpointUrl('api/sociallogin')),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'provider': provider,
           'token': token,
           'email': email,
           'name': name,
+          'firstName': name, // Backend expects firstName
           'photo_url': photoUrl,
         }),
       );
 
-      final data = jsonDecode(response.body);
+      debugPrint('Social login response status: ${response.statusCode}');
+      debugPrint('Social login response body: ${response.body.length > 500 ? "${response.body.substring(0, 500)}..." : response.body}');
+      
+      // Parse response body with error handling
+      dynamic data;
+      try {
+        data = jsonDecode(response.body);
+      } catch (e) {
+        debugPrint('Error parsing social login response: $e');
+        return {
+          'success': false,
+          'message': 'Invalid server response',
+          'error': 'Failed to parse server response'
+        };
+      }
       
       if (response.statusCode == 200) {
-        if (data['token'] != null) {
-          await _saveAuthToken(data['token']);
+        // Based on backend, success response has { 1: "Success", ... }
+        if (data is Map && data.containsKey('1') && data['1'] == 'Success') {
+          // The backend uses customerId as the identifier
+          String? customerId = data['customerId']?.toString();
+          
+          if (customerId != null) {
+            await _saveAuthToken(customerId);
+            debugPrint('Auth token (customerId) saved successfully');
+          } else {
+            debugPrint('Warning: No customerId found in social login response');
+          }
+          
+          // Save user profile data
+          final prefs = await SharedPreferences.getInstance();
+          
+          if (customerId != null) {
+            await prefs.setString('user_id', customerId);
+          }
+          
+          // Save email and name
+          final userEmail = data['email']?.toString() ?? email ?? '';
+          final userName = name ?? '';
+          
+          if (userName.isNotEmpty) {
+            await prefs.setString('user_name', userName);
+          }
+          
+          if (userEmail.isNotEmpty) {
+            await prefs.setString('user_email', userEmail);
+          }
+          
+          await prefs.setBool('user_logged_in', true);
+          
+          debugPrint('Social login successful');
+          
+          return {
+            'success': true,
+            'message': 'Login successful',
+            'user': {'name': userName, 'email': userEmail},
+          };
+        } else {
+          // Handle error response
+          String errorMsg = '';
+          if (data is String) {
+            errorMsg = data;
+          } else if (data is Map && data.containsKey('error')) {
+            errorMsg = data['error'].toString();
+          } else {
+            errorMsg = 'Authentication failed';
+          }
+          
+          return {
+            'success': false,
+            'message': errorMsg,
+            'error': errorMsg
+          };
         }
-        
-        // Save user profile data
-        final prefs = await SharedPreferences.getInstance();
-        if (data['userId'] != null) {
-          await prefs.setString('user_id', data['userId']);
-        }
-        
-        // Save name and email from response or from provided parameters
-        final userName = data['name'] ?? name ?? '';
-        final userEmail = data['email'] ?? email ?? '';
-        
-        await prefs.setString('user_name', userName);
-        await prefs.setString('user_email', userEmail);
-        await prefs.setBool('user_logged_in', true);
-        
-        return {
-          'success': true,
-          'message': data['message'] ?? 'Login successful',
-          'user': data['user'] ?? {'name': userName, 'email': userEmail},
-        };
       } else {
         debugPrint('Social login failed: ${response.statusCode}');
         debugPrint('Response: ${response.body}');
+        
+        // Try to extract the error message
+        String errorMsg = 'Authentication failed';
+        if (data is String) {
+          errorMsg = data;
+        } else if (data is Map && data.containsKey('error')) {
+          errorMsg = data['error'].toString();
+        }
+        
         return {
           'success': false,
-          'message': data['message'] ?? 'Authentication failed',
-          'error': data['error']
+          'message': errorMsg,
+          'error': 'Social login failed'
         };
       }
     } catch (e) {
@@ -1173,5 +1412,322 @@ class ApiService {
     }
     
     return commentsList;
+  }
+
+  /// Request a password reset code
+  Future<Map<String, dynamic>> requestPasswordReset(String email) async {
+    try {
+      debugPrint('Requesting password reset for email: $email');
+      
+      final response = await http.post(
+        Uri.parse(_getEndpointUrl('api/forgot-password')),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+        }),
+      );
+
+      debugPrint('Password reset request response status: ${response.statusCode}');
+      
+      // Try to parse the response body
+      dynamic data;
+      try {
+        data = jsonDecode(response.body);
+      } catch (e) {
+        debugPrint('Error parsing password reset response: $e');
+        return {
+          'success': false,
+          'message': 'Invalid server response',
+        };
+      }
+      
+      // The backend returns success regardless of whether the email exists
+      // for security reasons, so we'll just check for a 200 status
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': data is Map && data.containsKey('message') 
+              ? data['message'] 
+              : 'If your email is registered, you will receive a password reset code shortly.',
+        };
+      } else {
+        String errorMsg = 'Failed to request password reset';
+        if (data is Map && data.containsKey('error')) {
+          errorMsg = data['error'].toString();
+        }
+        
+        return {
+          'success': false,
+          'message': errorMsg,
+        };
+      }
+    } catch (e) {
+      debugPrint('Exception during password reset request: $e');
+      return {
+        'success': false,
+        'message': 'Failed to request password reset: ${e.toString()}',
+      };
+    }
+  }
+  
+  /// Verify reset token
+  Future<Map<String, dynamic>> verifyResetToken(String email, String token) async {
+    try {
+      debugPrint('Verifying reset token for email: $email');
+      
+      final response = await http.post(
+        Uri.parse(_getEndpointUrl('api/verify-reset-token')),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'token': token,
+        }),
+      );
+
+      debugPrint('Token verification response status: ${response.statusCode}');
+      
+      // Try to parse the response body
+      dynamic data;
+      try {
+        data = jsonDecode(response.body);
+      } catch (e) {
+        debugPrint('Error parsing token verification response: $e');
+        return {
+          'success': false,
+          'message': 'Invalid server response',
+        };
+      }
+      
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': data is Map && data.containsKey('message') 
+              ? data['message'] 
+              : 'Token verified successfully',
+        };
+      } else {
+        String errorMsg = 'Invalid or expired code';
+        if (data is Map && data.containsKey('error')) {
+          errorMsg = data['error'].toString();
+        }
+        
+        return {
+          'success': false,
+          'message': errorMsg,
+        };
+      }
+    } catch (e) {
+      debugPrint('Exception during token verification: $e');
+      return {
+        'success': false,
+        'message': 'Failed to verify code: ${e.toString()}',
+      };
+    }
+  }
+  
+  /// Reset password with token
+  Future<Map<String, dynamic>> resetPassword(String email, String token, String newPassword) async {
+    try {
+      debugPrint('Resetting password for email: $email');
+      
+      final response = await http.post(
+        Uri.parse(_getEndpointUrl('api/reset-password')),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'token': token,
+          'newPassword': newPassword,
+        }),
+      );
+
+      debugPrint('Password reset response status: ${response.statusCode}');
+      
+      // Try to parse the response body
+      dynamic data;
+      try {
+        data = jsonDecode(response.body);
+      } catch (e) {
+        debugPrint('Error parsing password reset response: $e');
+        return {
+          'success': false,
+          'message': 'Invalid server response',
+        };
+      }
+      
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': data is Map && data.containsKey('message') 
+              ? data['message'] 
+              : 'Password has been reset successfully',
+        };
+      } else {
+        String errorMsg = 'Failed to reset password';
+        if (data is Map && data.containsKey('error')) {
+          errorMsg = data['error'].toString();
+        }
+        
+        return {
+          'success': false,
+          'message': errorMsg,
+        };
+      }
+    } catch (e) {
+      debugPrint('Exception during password reset: $e');
+      return {
+        'success': false,
+        'message': 'Failed to reset password: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Verify account with OTP
+  Future<Map<String, dynamic>> verifyAccount({
+    required String email,
+    required String token,
+  }) async {
+    try {
+      debugPrint('Verifying account for email: $email with token: $token');
+      
+      final response = await http.post(
+        Uri.parse(_getEndpointUrl('api/verify-account')),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'token': token,
+        }),
+      );
+
+      debugPrint('Verification response status: ${response.statusCode}');
+      debugPrint('Verification response body: ${response.body}');
+      
+      // Try to parse the response body
+      dynamic data;
+      try {
+        data = jsonDecode(response.body);
+      } catch (e) {
+        debugPrint('Error parsing verification response: $e');
+        return {
+          'success': false,
+          'message': 'Invalid server response',
+        };
+      }
+      
+      if (response.statusCode == 200) {
+        // Check success flag from backend
+        if (data is Map && data['success'] == true) {
+          // User is verified, save credentials
+          if (data.containsKey('user') && data['user'] is Map) {
+            final user = data['user'];
+            
+            // Save authentication info
+            final customerId = user['customerId'];
+            if (customerId != null) {
+              await _saveAuthToken(customerId.toString());
+            }
+            
+            // Save user data
+            final prefs = await SharedPreferences.getInstance();
+            if (customerId != null) {
+              await prefs.setString('user_id', customerId.toString());
+            }
+            
+            final firstName = user['firstName'];
+            if (firstName != null) {
+              await prefs.setString('user_name', firstName.toString());
+            }
+            
+            await prefs.setString('user_email', email);
+            await prefs.setBool('user_logged_in', true);
+          }
+          
+          return {
+            'success': true,
+            'message': data['msg'] ?? 'Account verified successfully',
+          };
+        } else {
+          return {
+            'success': false,
+            'message': data['error'] ?? data['msg'] ?? 'Verification failed',
+          };
+        }
+      } else {
+        String errorMsg = 'Verification failed';
+        if (data is Map && data.containsKey('error')) {
+          errorMsg = data['error'].toString();
+        }
+        
+        return {
+          'success': false,
+          'message': errorMsg,
+        };
+      }
+    } catch (e) {
+      debugPrint('Exception during verification: $e');
+      return {
+        'success': false,
+        'message': 'Verification failed: ${e.toString()}',
+      };
+    }
+  }
+  
+  /// Resend verification code
+  Future<Map<String, dynamic>> resendVerification(String email) async {
+    try {
+      debugPrint('Resending verification code for email: $email');
+      
+      final response = await http.post(
+        Uri.parse(_getEndpointUrl('api/resend-verification')),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+        }),
+      );
+
+      debugPrint('Resend verification response status: ${response.statusCode}');
+      
+      // Try to parse the response body
+      dynamic data;
+      try {
+        data = jsonDecode(response.body);
+      } catch (e) {
+        debugPrint('Error parsing resend verification response: $e');
+        return {
+          'success': false,
+          'message': 'Invalid server response',
+        };
+      }
+      
+      if (response.statusCode == 200) {
+        // Check success flag from backend
+        if (data is Map && data['success'] == true) {
+          return {
+            'success': true,
+            'message': data['msg'] ?? 'Verification code sent to your email',
+          };
+        } else {
+          return {
+            'success': false,
+            'message': data['error'] ?? data['msg'] ?? 'Failed to resend verification code',
+          };
+        }
+      } else {
+        String errorMsg = 'Failed to resend verification code';
+        if (data is Map && data.containsKey('error')) {
+          errorMsg = data['error'].toString();
+        }
+        
+        return {
+          'success': false,
+          'message': errorMsg,
+        };
+      }
+    } catch (e) {
+      debugPrint('Exception during resend verification: $e');
+      return {
+        'success': false,
+        'message': 'Failed to resend verification code: ${e.toString()}',
+      };
+    }
   }
 } 

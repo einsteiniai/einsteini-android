@@ -9,6 +9,7 @@ class PlatformChannel {
   static const MethodChannel _channel = MethodChannel('com.einsteini.ai/settings');
   static const MethodChannel _overlayChannel = MethodChannel('com.einsteini.ai/overlay');
   static final ApiService _apiService = ApiService();
+  static final LinkedInService _linkedInService = LinkedInService();
   
   // Callback for when content is scraped from the overlay
   static Function(Map<String, dynamic>)? onContentScraped;
@@ -73,12 +74,14 @@ class PlatformChannel {
     }
   }
 
+  /*
   /// Opens accessibility settings directly
   static Future<void> openAccessibilitySettings() async {
     if (Platform.isAndroid) {
       await openSystemSettings('android.settings.ACCESSIBILITY_SETTINGS');
     }
   }
+  */
 
   /// Check if overlay permission is granted
   static Future<bool> checkOverlayPermission() async {
@@ -91,6 +94,7 @@ class PlatformChannel {
     }
   }
 
+  /*
   /// Check if accessibility permission is granted
   static Future<bool> checkAccessibilityPermission() async {
     try {
@@ -101,6 +105,7 @@ class PlatformChannel {
       return false;
     }
   }
+  */
   
   /// Scrape a LinkedIn post using the backend API
   static Future<Map<String, dynamic>> scrapeLinkedInPost(String url) async {
@@ -120,6 +125,21 @@ class PlatformChannel {
         'comments': 0,
         'images': <String>[],
         'commentsList': <Map<String, String>>[]
+      };
+    }
+  }
+  
+  /// Get LinkedIn OEmbed data for a post URL
+  static Future<Map<String, dynamic>> getLinkedInOEmbedData(String url) async {
+    try {
+      // Use the LinkedIn service to get OEmbed data
+      return await _linkedInService.getLinkedInOEmbedData(url);
+    } catch (e) {
+      print('Failed to get LinkedIn OEmbed data: $e');
+      return {
+        'success': false,
+        'error': 'Failed to get LinkedIn OEmbed data: $e',
+        'html': null
       };
     }
   }

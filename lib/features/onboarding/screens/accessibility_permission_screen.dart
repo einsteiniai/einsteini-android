@@ -1,14 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lottie/lottie.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:einsteiniapp/core/routes/app_router.dart' as router;
-import 'package:einsteiniapp/core/utils/platform_channel.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-// Import specific class to avoid conflicts
-import 'package:einsteiniapp/core/utils/permission_utils.dart' show PermissionUtils;
 
 class AccessibilityPermissionScreen extends StatefulWidget {
   const AccessibilityPermissionScreen({Key? key}) : super(key: key);
@@ -18,6 +11,36 @@ class AccessibilityPermissionScreen extends StatefulWidget {
 }
 
 class _AccessibilityPermissionScreenState extends State<AccessibilityPermissionScreen> {
+
+  @override
+  void initState() {
+    super.initState();
+    // Automatically skip the accessibility screen
+    _skipPermission();
+  }
+
+  void _skipPermission() async {
+    // Directly navigate to the next screen
+    if (mounted) {
+      context.go(router.AppRoutes.themeSelection);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Setup einsteini.ai'),
+        elevation: 0,
+      ),
+      body: const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+
+  // Original implementation commented out
+  /*
   bool _isPermissionGranted = false;
   bool _isChecking = false;
   Timer? _checkTimer;
@@ -248,25 +271,30 @@ class _AccessibilityPermissionScreenState extends State<AccessibilityPermissionS
                   children: [
                     _isChecking
                       ? const Center(child: CircularProgressIndicator())
-                      : SizedBox(
-                          width: double.infinity,
+                      : Row(
+                          children: [
+                            Expanded(
                           child: ElevatedButton(
-                            onPressed: _isPermissionGranted 
-                              ? () => context.go(router.AppRoutes.themeSelection)
-                              : _requestPermission,
+                                onPressed: _isPermissionGranted ? null : _requestPermission,
                             style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding: const EdgeInsets.all(16),
+                                  backgroundColor: Theme.of(context).colorScheme.primary,
+                                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                                  disabledBackgroundColor: Colors.grey,
                             ),
-                            child: Text(_isPermissionGranted ? 'Continue' : 'Open Accessibility Settings'),
+                                child: Text(_isPermissionGranted
+                                  ? 'Permission Granted'
+                                  : 'Enable Accessibility',
+                                  style: const TextStyle(fontSize: 16),
                           ),
                         ),
-                    
-                    const SizedBox(height: 12),
-                    
-                    if (!_isPermissionGranted)
+                            ),
+                          ],
+                        ),
+                    const SizedBox(height: 8),
                       TextButton(
                         onPressed: _skipPermission,
-                        child: const Text('Skip for Now'),
+                      child: const Text('Skip for now'),
                       ),
                   ],
                 ),
@@ -278,24 +306,30 @@ class _AccessibilityPermissionScreenState extends State<AccessibilityPermissionS
     );
   }
 
-  Widget _buildPermissionItem(BuildContext context, {
-    required IconData icon,
+  Widget _buildPermissionItem(
+    BuildContext context, {
     required String title,
     required String description,
+    required IconData icon,
   }) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
+    return Container(
+      padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey[800]!
+            : Colors.grey[300]!,
+          width: 1,
+        ),
           ),
-          child: Icon(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
             icon,
-            color: Theme.of(context).colorScheme.primary,
             size: 24,
-          ),
+            color: Theme.of(context).colorScheme.secondary,
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -311,14 +345,14 @@ class _AccessibilityPermissionScreenState extends State<AccessibilityPermissionS
               const SizedBox(height: 4),
               Text(
                 description,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[600],
-                ),
+                  style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
           ),
         ),
       ],
+      ),
     );
   }
+  */
 } 

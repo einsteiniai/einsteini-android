@@ -7,6 +7,11 @@ import '../../features/onboarding/screens/overlay_permission_screen.dart';
 import '../../features/onboarding/screens/accessibility_permission_screen.dart';
 import '../../features/onboarding/screens/theme_selection_screen.dart';
 import '../../features/onboarding/screens/auth_screen.dart';
+import '../../features/onboarding/screens/forgot_password_screen.dart';
+import '../../features/onboarding/screens/verify_reset_code_screen.dart';
+import '../../features/onboarding/screens/reset_password_screen.dart';
+import '../../features/onboarding/screens/verify_account_screen.dart';
+import '../../features/onboarding/screens/plans_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/home/screens/profile_screen.dart';
 import '../../features/home/screens/settings_screen.dart';
@@ -27,6 +32,11 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String privacyPolicy = '/privacy-policy';
   static const String termsOfService = '/terms-of-service';
+  static const String forgotPassword = '/forgot-password';
+  static const String verifyResetCode = '/verify-reset-code';
+  static const String resetPassword = '/reset-password';
+  static const String verifyAccount = '/verify-account';
+  static const String plans = '/plans';
 }
 
 GoRouter createRouter() {
@@ -47,6 +57,10 @@ GoRouter createRouter() {
       GoRoute(
         path: AppRoutes.accessibilityPermission,
         builder: (context, state) => const AccessibilityPermissionScreen(),
+        redirect: (context, state) {
+          // Skip accessibility screen and go directly to theme selection
+          return AppRoutes.themeSelection;
+        },
       ),
       GoRoute(
         path: AppRoutes.overlayPermission,
@@ -59,6 +73,52 @@ GoRouter createRouter() {
       GoRoute(
         path: AppRoutes.auth,
         builder: (context, state) => const AuthScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        name: 'forgot_password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.verifyResetCode,
+        name: 'verify_reset_code',
+        builder: (context, state) {
+          final Map<String, dynamic> extra = state.extra as Map<String, dynamic>;
+          return VerifyResetCodeScreen(
+            email: extra['email'] as String,
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.resetPassword,
+        name: 'reset_password',
+        builder: (context, state) {
+          final Map<String, dynamic> extra = state.extra as Map<String, dynamic>;
+          return ResetPasswordScreen(
+            email: extra['email'] as String,
+            token: extra['token'] as String,
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.verifyAccount,
+        name: 'verify_account',
+        builder: (context, state) {
+          final Map<String, dynamic> extra = state.extra as Map<String, dynamic>;
+          return VerifyAccountScreen(
+            email: extra['email'] as String,
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.plans,
+        name: 'plans',
+        builder: (context, state) {
+          final bool isNewUser = state.extra != null ? 
+              (state.extra as Map<String, dynamic>)['isNewUser'] as bool? ?? false : 
+              false;
+          return PlansScreen(isNewUser: isNewUser);
+        },
       ),
       GoRoute(
         path: AppRoutes.home,
@@ -116,7 +176,8 @@ GoRouter createRouter() {
       
       // Get permissions state
       final overlayPermissionGranted = prefs.getBool('overlay_permission_granted') ?? false;
-      final accessibilityPermissionGranted = prefs.getBool('accessibility_permission_granted') ?? false;
+      // Always consider accessibility as granted since we're removing it
+      final accessibilityPermissionGranted = true;
       
       // Handle splash screen
       if (state.matchedLocation == '/splash') {
@@ -135,8 +196,20 @@ GoRouter createRouter() {
       final onboardingPaths = [
         AppRoutes.welcome, 
         AppRoutes.overlayPermission, 
-        AppRoutes.accessibilityPermission, 
+        // Remove accessibility from normal flow
+        // AppRoutes.accessibilityPermission, 
         AppRoutes.themeSelection
+      ];
+      
+      // Allow unrestricted navigation through the forgot password flow
+      final publicPaths = [
+        AppRoutes.auth,
+        AppRoutes.forgotPassword,
+        AppRoutes.verifyResetCode,
+        AppRoutes.resetPassword,
+        AppRoutes.verifyAccount,
+        AppRoutes.plans,
+        ...onboardingPaths
       ];
       
       // If we're in the onboarding flow, allow normal progression
@@ -146,17 +219,12 @@ GoRouter createRouter() {
       
       // If onboarding isn't complete and user is trying to access a protected route
       if (!hasCompletedOnboarding && 
-          !onboardingPaths.contains(state.matchedLocation) &&
-          state.matchedLocation != AppRoutes.auth) {
+          !publicPaths.contains(state.matchedLocation)) {
         // If overlay permission isn't granted, go there first
         if (!overlayPermissionGranted) {
           return AppRoutes.overlayPermission;
         } 
-        // If accessibility permission isn't granted, go there next
-        else if (!accessibilityPermissionGranted) {
-          return AppRoutes.accessibilityPermission;
-        } 
-        // Otherwise proceed to theme selection
+        // Skip accessibility check and go directly to theme selection
         else {
           return AppRoutes.themeSelection;
         }
@@ -164,8 +232,7 @@ GoRouter createRouter() {
       
       // If user is not logged in and trying to access a protected route
       if (!isLoggedIn && 
-          state.matchedLocation != AppRoutes.auth && 
-          !onboardingPaths.contains(state.matchedLocation)) {
+          !publicPaths.contains(state.matchedLocation)) {
         return AppRoutes.auth;
       }
       

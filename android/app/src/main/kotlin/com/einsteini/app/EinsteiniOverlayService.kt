@@ -573,14 +573,14 @@ class EinsteiniOverlayService : Service() {
             val tabTranslate = overlayView.findViewById<Button>(R.id.tab_translate)
             val tabComment = overlayView.findViewById<Button>(R.id.tab_comment)
             
-            // Load and apply custom fonts
-            val spaceGrotesk = ResourcesCompat.getFont(this, R.font.spacegrotesk_medium)
-            val inter = ResourcesCompat.getFont(this, R.font.inter_18pt_regular)
+            // Load and apply custom fonts - updated to use TikTok Sans and DM Sans
+            val tiktokSans = ResourcesCompat.getFont(this, R.font.tiktok_sans)
+            val dmSans = ResourcesCompat.getFont(this, R.font.dm_sans)
             
-            // Apply Space Grotesk font to all tab buttons explicitly
-            tabSummarize.typeface = spaceGrotesk
-            tabTranslate.typeface = spaceGrotesk
-            tabComment.typeface = spaceGrotesk
+            // Apply TikTok Sans font to all tab buttons explicitly
+            tabSummarize.typeface = tiktokSans
+            tabTranslate.typeface = tiktokSans
+            tabComment.typeface = tiktokSans
             
             // Get content view container for LinkedIn
             contentViewLinkedIn = overlayView.findViewById(R.id.contentViewLinkedIn)
@@ -616,7 +616,7 @@ class EinsteiniOverlayService : Service() {
             contentViewComment = commentView
             
             // Apply fonts to all text elements in the overlay
-            applyFontsToAllTextViews(overlayView, spaceGrotesk, inter)
+            applyFontsToAllTextViews(overlayView, tiktokSans, dmSans)
             
             // Set up click listener for the scrim to close the overlay
             val overlayScrim = overlayView.findViewById<View>(R.id.overlay_scrim)
@@ -1515,9 +1515,29 @@ class EinsteiniOverlayService : Service() {
                 if (overlayView.parent == null) {
                     windowManager.addView(overlayView, overlayParams)
                 }
-                overlayView.visibility = View.VISIBLE
                 
-                animateOverlayEntry()
+                // Setup initial state for animation
+                val scrim = overlayView.findViewById<View>(R.id.overlay_scrim)
+                scrim.alpha = 0f
+                
+                overlayContainer.translationY = overlayHeight.toFloat()
+                overlayContainer.alpha = 0.7f
+                
+                // Animate scrim fade in
+                scrim.animate()
+                    .alpha(1f)
+                    .setDuration(250)
+                    .start()
+                
+                // Animate container sliding up with bounce
+                overlayContainer.animate()
+                    .translationY(0f)
+                    .alpha(1f)
+                    .setDuration(400)
+                    .setInterpolator(OvershootInterpolator(0.8f))
+                    .start()
+                
+                overlayView.visibility = View.VISIBLE
                 isOverlayVisible = true
                 
                 // Hide the bubble while overlay is visible
@@ -1539,22 +1559,61 @@ class EinsteiniOverlayService : Service() {
         Log.d("EinsteiniOverlay", "Hiding overlay")
         
         try {
-            // First hide the overlay window
-            if (::overlayView.isInitialized && overlayView.isAttachedToWindow) {
-                        windowManager.removeView(overlayView)
+            // Get references to views for animation
+            val overlayContainer = overlayView.findViewById<LinearLayout>(R.id.overlay_container)
+            val scrim = overlayView.findViewById<View>(R.id.overlay_scrim)
+            
+            // Animate scrim fade out
+            scrim.animate()
+                .alpha(0f)
+                .setDuration(250)
+                .start()
+            
+            // Animate container sliding down
+            overlayContainer.animate()
+                .translationY(overlayContainer.height.toFloat())
+                .alpha(0.5f)
+                .setDuration(350)
+                .setInterpolator(android.view.animation.AccelerateInterpolator())
+                .withEndAction {
+                    try {
+                        // First hide the overlay window
+                        if (::overlayView.isInitialized && overlayView.isAttachedToWindow) {
+                            windowManager.removeView(overlayView)
+                        }
+                        
+                        // Hide the close button
+                        if (::closeButtonView.isInitialized && closeButtonView.isAttachedToWindow) {
+                            windowManager.removeView(closeButtonView)
+                        }
+                        
+                        isOverlayVisible = false
+                        
+                        // Show the bubble with a delay to ensure clean transition
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            showBubble()
+                        }, 200)
+                    } catch (e: Exception) {
+                        Log.e("EinsteiniOverlay", "Error hiding overlay after animation", e)
+                        
+                        // Fallback to direct removal
+                        try {
+                            if (::overlayView.isInitialized && overlayView.isAttachedToWindow) {
+                                windowManager.removeView(overlayView)
+                            }
+                            
+                            if (::closeButtonView.isInitialized && closeButtonView.isAttachedToWindow) {
+                                windowManager.removeView(closeButtonView)
+                            }
+                            
+                            isOverlayVisible = false
+                            showBubble()
+                        } catch (e2: Exception) {
+                            Log.e("EinsteiniOverlay", "Error in fallback overlay removal", e2)
+                        }
                     }
-            
-            // Hide the close button
-            if (::closeButtonView.isInitialized && closeButtonView.isAttachedToWindow) {
-                windowManager.removeView(closeButtonView)
-            }
-            
-            isOverlayVisible = false
-            
-            // Show the bubble with a delay to ensure clean transition
-            Handler(Looper.getMainLooper()).postDelayed({
-                showBubble()
-            }, 200)
+                }
+                .start()
         } catch (e: Exception) {
             Log.e("EinsteiniOverlay", "Error hiding overlay", e)
             
@@ -1598,7 +1657,7 @@ class EinsteiniOverlayService : Service() {
             Log.e(TAG, "Error in animateOverlayEntry", e)
         }
     }
-    
+
     private fun animateOverlayExit(onComplete: () -> Unit) {
         try {
             if (!::overlayView.isInitialized) {
@@ -2320,14 +2379,42 @@ class EinsteiniOverlayService : Service() {
     
     // Helper method to create a content block
     private fun createContentBlock(title: String, content: String): LinearLayout {
-        val block = LinearLayout(this)
-        block.orientation = LinearLayout.VERTICAL
-        block.layoutParams = LinearLayout.LayoutParams(
+        // Create outer linear layout that will hold our card
+        val blockContainer = LinearLayout(this)
+        blockContainer.orientation = LinearLayout.VERTICAL
+        blockContainer.layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply {
-            setMargins(0, 16, 0, 16)
+            setMargins(16, 8, 16, 8)
         }
+        
+        // Create card view
+        val cardView = androidx.cardview.widget.CardView(this)
+        cardView.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        cardView.cardElevation = 4.dpToPx().toFloat()
+        cardView.radius = 16.dpToPx().toFloat()
+        cardView.setCardBackgroundColor(Color.parseColor(if (isDarkTheme) "#1A2235" else "#F5F5F5"))
+        
+        // Create card content layout
+        val cardContent = LinearLayout(this)
+        cardContent.orientation = LinearLayout.VERTICAL
+        cardContent.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        
+        // Create header container
+        val headerContainer = LinearLayout(this)
+        headerContainer.orientation = LinearLayout.VERTICAL
+        headerContainer.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        headerContainer.setPadding(20.dpToPx(), 20.dpToPx(), 20.dpToPx(), 12.dpToPx())
         
         // Create title TextView
         val titleView = TextView(this)
@@ -2335,25 +2422,37 @@ class EinsteiniOverlayService : Service() {
         titleView.text = title
         titleView.setTextColor(ContextCompat.getColor(this, R.color.purple_accent))
         titleView.textSize = 18f
-        titleView.setPadding(16, 16, 16, 8)
         titleView.setTypeface(null, Typeface.BOLD)
+        headerContainer.addView(titleView)
+        
+        // Add colored divider under title
+        val divider = View(this)
+        divider.layoutParams = LinearLayout.LayoutParams(40.dpToPx(), 3.dpToPx()).apply {
+            topMargin = 8.dpToPx()
+        }
+        divider.setBackgroundColor(Color.parseColor("#BD79FF"))
+        headerContainer.addView(divider)
         
         // Create content TextView
         val contentView = TextView(this)
         contentView.id = View.generateViewId()
         contentView.text = content
         contentView.setTextColor(if (isDarkTheme) Color.WHITE else Color.BLACK)
-        contentView.textSize = 14f
-        contentView.setPadding(16, 8, 16, 16)
+        contentView.textSize = 15f
+        contentView.setLineSpacing(0f, 1.2f)  // Use setLineSpacing instead of reassigning lineSpacingMultiplier
+        contentView.setPadding(20.dpToPx(), 4.dpToPx(), 20.dpToPx(), 20.dpToPx())
         
-        // Add views to block
-        block.addView(titleView)
-        block.addView(contentView)
+        // Add views to card content
+        cardContent.addView(headerContainer)
+        cardContent.addView(contentView)
         
-        // Set background
-        block.setBackgroundColor(Color.parseColor(if (isDarkTheme) "#1A2235" else "#F5F5F5"))
+        // Add card content to card
+        cardView.addView(cardContent)
         
-        return block
+        // Add card to container
+        blockContainer.addView(cardView)
+        
+        return blockContainer
     }
     
     // Helper method to update a content block
@@ -2429,63 +2528,60 @@ class EinsteiniOverlayService : Service() {
 
     // Show the bubble when the overlay is collapsed
     private fun showBubble() {
-        Log.d("EinsteiniOverlay", "showBubble called - direct implementation")
+        if (isBubbleShown) return
         
-        // Don't do anything if bubble is already shown
-        if (isBubbleShown) {
-            Log.d("EinsteiniOverlay", "Bubble already shown, returning")
-            return
-        }
+        Log.d("EinsteiniOverlay", "Showing bubble")
         
         try {
-            // Remove any existing bubble first to be safe
-            removeBubbleIfExists()
-            
-            // Create the bubble view if not initialized
+            // Make sure the bubble view is initialized
             if (!::bubbleView.isInitialized) {
-                Log.d("EinsteiniOverlay", "Initializing bubble view")
                 setupBubble()
-            } else {
-                // Always update theme before showing to ensure correct appearance
-                Log.d("EinsteiniOverlay", "Updating bubble theme before showing, isDarkTheme=$isDarkTheme")
-                updateBubbleTheme()
             }
             
-            // Set position at right edge of screen
-                    bubbleParams?.x = screenWidth - bubbleSize - 16
-                    bubbleParams?.y = 100
-                    
-            // Add bubble to window manager
-            Log.d("EinsteiniOverlay", "Adding bubble to window manager")
-            windowManager.addView(bubbleView, bubbleParams)
-            isBubbleShown = true
-            
-            // Make sure it's visible
-            bubbleView.visibility = View.VISIBLE
-            
-            // Animate entry
+            // Reset bubble properties
             bubbleView.alpha = 0f
-            bubbleView.scaleX = 0.5f
-            bubbleView.scaleY = 0.5f
+            bubbleView.scaleX = 0f
+            bubbleView.scaleY = 0f
+            bubbleView.rotation = -15f
             
-            bubbleView.animate()
-                .alpha(1f)
-                .scaleX(1f)
-                .scaleY(1f)
-                .setDuration(300)
-                .setInterpolator(OvershootInterpolator())
-                .start()
+            try {
+                windowManager.addView(bubbleView, bubbleParams)
+                isBubbleShown = true
                 
-            Log.d("EinsteiniOverlay", "Bubble added and animated")
+                // Enhanced animation sequence
+                bubbleView.animate()
+                    .alpha(1f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .rotation(0f)
+                    .setDuration(500)
+                    .setInterpolator(OvershootInterpolator(1.5f))
+                    .withEndAction {
+                        // Add a subtle bounce after appearing
+                        val bouncer = ValueAnimator.ofFloat(1f, 1.1f, 1f)
+                        bouncer.duration = 300
+                        bouncer.interpolator = OvershootInterpolator(2f)
+                        bouncer.addUpdateListener { animation ->
+                            val scale = animation.animatedValue as Float
+                            bubbleView.scaleX = scale
+                            bubbleView.scaleY = scale
+                        }
+                        bouncer.startDelay = 300
+                        bouncer.start()
+                    }
+                    .start()
+            } catch (e: Exception) {
+                Log.e("EinsteiniOverlay", "Error adding bubble view", e)
+            }
         } catch (e: Exception) {
             Log.e("EinsteiniOverlay", "Error showing bubble", e)
             
             // Try again after a delay as last resort
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        try {
+            Handler(Looper.getMainLooper()).postDelayed({
+                try {
                     removeBubbleIfExists()
                     setupBubble()
-                            windowManager.addView(bubbleView, bubbleParams)
+                    windowManager.addView(bubbleView, bubbleParams)
                     isBubbleShown = true
                     Log.d("EinsteiniOverlay", "Bubble added on second attempt")
                 } catch (e2: Exception) {
@@ -2542,37 +2638,103 @@ class EinsteiniOverlayService : Service() {
         val tabComment = overlayView.findViewById<Button>(R.id.tab_comment)
         
         // Reset all tabs to inactive style
-        tabSummarize.setTextColor(Color.parseColor("#B4B7BD"))
-        tabTranslate.setTextColor(Color.parseColor("#B4B7BD"))
-        tabComment.setTextColor(Color.parseColor("#B4B7BD"))
+        tabSummarize.setBackgroundResource(R.drawable.tab_button_unselected)
+        tabSummarize.setTextColor(Color.parseColor("#9AA1B1"))
+        tabTranslate.setBackgroundResource(R.drawable.tab_button_unselected)
+        tabTranslate.setTextColor(Color.parseColor("#9AA1B1"))
+        tabComment.setBackgroundResource(R.drawable.tab_button_unselected)
+        tabComment.setTextColor(Color.parseColor("#9AA1B1"))
         
-        // Set active tab style
-        when (activeTabIndex) {
-            0 -> tabSummarize.setTextColor(Color.parseColor("#BD79FF"))
-            1 -> tabTranslate.setTextColor(Color.parseColor("#BD79FF"))
-            2 -> tabComment.setTextColor(Color.parseColor("#BD79FF"))
-        }
-        
-        // Update content visibility based on tab
+        // Set active tab style with animation
         when (activeTabIndex) {
             0 -> {
-                contentViewLinkedIn.visibility = View.VISIBLE
-                if (::contentViewTwitter.isInitialized) contentViewTwitter.visibility = View.GONE
-                if (::contentViewComment.isInitialized) contentViewComment.visibility = View.GONE
+                tabSummarize.setBackgroundResource(R.drawable.tab_button_selected)
+                tabSummarize.setTextColor(Color.WHITE)
+                animateTabSelection(tabSummarize)
             }
             1 -> {
-                contentViewLinkedIn.visibility = View.GONE
-                if (::contentViewTwitter.isInitialized) contentViewTwitter.visibility = View.VISIBLE
-                if (::contentViewComment.isInitialized) contentViewComment.visibility = View.GONE
+                tabTranslate.setBackgroundResource(R.drawable.tab_button_selected)
+                tabTranslate.setTextColor(Color.WHITE)
+                animateTabSelection(tabTranslate)
             }
             2 -> {
-                contentViewLinkedIn.visibility = View.GONE
-                if (::contentViewTwitter.isInitialized) contentViewTwitter.visibility = View.GONE
-                if (::contentViewComment.isInitialized) contentViewComment.visibility = View.VISIBLE
+                tabComment.setBackgroundResource(R.drawable.tab_button_selected)
+                tabComment.setTextColor(Color.WHITE)
+                animateTabSelection(tabComment)
             }
+        }
+        
+        // Get all content views
+        val contentViews = listOf(
+            contentViewLinkedIn,
+            if (::contentViewTwitter.isInitialized) contentViewTwitter else null,
+            if (::contentViewComment.isInitialized) contentViewComment else null
+        ).filterNotNull()
+        
+        // Get the current visible view and target view
+        val currentVisibleView = contentViews.firstOrNull { it.visibility == View.VISIBLE }
+        val targetView = when (activeTabIndex) {
+            0 -> contentViewLinkedIn
+            1 -> if (::contentViewTwitter.isInitialized) contentViewTwitter else null
+            2 -> if (::contentViewComment.isInitialized) contentViewComment else null
+            else -> null
+        }
+        
+        // If both current and target views exist and they're different, animate the transition
+        if (currentVisibleView != null && targetView != null && currentVisibleView != targetView) {
+            animateContentTransition(currentVisibleView, targetView)
+        } else {
+            // Otherwise just update visibility without animation
+            contentViews.forEach { it.visibility = View.GONE }
+            targetView?.visibility = View.VISIBLE
         }
         
         // Reset scroll position when changing tabs
         overlayView.findViewById<NestedScrollView>(R.id.contentScrollView)?.scrollTo(0, 0)
+    }
+    
+    // Animate tab button selection
+    private fun animateTabSelection(tab: Button) {
+        tab.scaleX = 0.9f
+        tab.scaleY = 0.9f
+        tab.alpha = 0.7f
+        
+        tab.animate()
+            .scaleX(1f)
+            .scaleY(1f)
+            .alpha(1f)
+            .setDuration(250)
+            .setInterpolator(android.view.animation.OvershootInterpolator(1.2f))
+            .start()
+    }
+    
+    // Animate content transition between tabs
+    private fun animateContentTransition(currentView: View, targetView: View) {
+        // Make sure the target view is visible but transparent
+        targetView.alpha = 0f
+        targetView.visibility = View.VISIBLE
+        targetView.translationX = 100f
+        
+        // Animate current view out
+        currentView.animate()
+            .alpha(0f)
+            .translationX(-100f)
+            .setDuration(200)
+            .withEndAction {
+                currentView.visibility = View.GONE
+                // Use setTranslationX instead of reassigning translationX property
+                currentView.setTranslationX(0f)
+            }
+            .start()
+        
+        // Animate target view in with a slight delay
+        targetView.postDelayed({
+            targetView.animate()
+                .alpha(1f)
+                .translationX(0f)
+                .setDuration(200)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                .start()
+        }, 100)
     }
 } 

@@ -9,7 +9,7 @@ import 'platform_channel.dart';
 
 enum AppPermission {
   overlay,
-  accessibility,
+  // accessibility, // Commented out accessibility permission
 }
 
 class PermissionUtils {
@@ -73,6 +73,7 @@ class PermissionUtils {
     );
   }
   
+  /*
   static Future<bool> checkAccessibilityPermission() async {
     // This is more complex and platform-specific
     // Usually requires the user to manually enable in settings
@@ -112,70 +113,14 @@ class PermissionUtils {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'einsteini.ai - LinkedIn Assistant',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Switch(
-                    value: false,
-                    onChanged: null,
-                    activeColor: Theme.of(context).colorScheme.primary,
-                  ),
-                ],
+              Text(
+                'einsteini.ai - LinkedIn Assistant',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               const Divider(),
-              const SizedBox(height: 16),
-              Text(
-                'Options',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'einsteini.ai - LinkedIn Assistant shortcut',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'Disable',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Switch(
-                    value: false,
-                    onChanged: null,
-                    activeColor: Theme.of(context).colorScheme.primary,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Settings',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              ),
               const SizedBox(height: 16),
               Text(
                 'einsteini.ai uses the Android Accessibility service to process LinkedIn content and provide you with AI-powered writing suggestions. To provide you with an optimized product, we also access some additional information, such as the type of content you\'re viewing. We don\'t and will not sell your data.',
@@ -249,6 +194,7 @@ class PermissionUtils {
       ),
     );
   }
+  */
   
   static Future<void> setPermissionGranted(AppPermission permission, bool granted) async {
     final prefs = await SharedPreferences.getInstance();
@@ -256,9 +202,11 @@ class PermissionUtils {
       case AppPermission.overlay:
         await prefs.setBool('overlay_granted', granted);
         break;
+      /*
       case AppPermission.accessibility:
         await prefs.setBool('accessibility_granted', granted);
         break;
+      */
     }
   }
   
@@ -266,9 +214,12 @@ class PermissionUtils {
     switch (permission) {
       case AppPermission.overlay:
         return await checkOverlayPermission();
+      /*
       case AppPermission.accessibility:
         return await checkAccessibilityPermission();
+      */
     }
+    return false; // Added default return value
   }
   
   static Future<bool> requestPermission(BuildContext context, AppPermission permission) async {
@@ -282,10 +233,13 @@ class PermissionUtils {
         }
         return true;
         
+      /*
       case AppPermission.accessibility:
         await openAccessibilitySettings();
         return false; // We can't programmatically determine if accessibility was granted
+      */
     }
+    return false; // Added default return value
   }
   
   static Future<bool> toggleOverlay(bool enable) async {

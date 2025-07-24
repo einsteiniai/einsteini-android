@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.1+2
+version: 1.0.1+6
 
 environment:
   sdk: ^3.6.0
@@ -55,6 +55,8 @@ dependencies:
   uuid: ^4.3.3
   url_launcher: ^6.2.5
   flutter_markdown: ^0.6.18
+  webview_flutter: ^4.7.0
+  html_unescape: ^2.0.0
 
   # Social login dependencies
   google_sign_in: ^6.1.6
@@ -88,15 +90,14 @@ flutter:
   assets:
     - assets/animations/
     - assets/fonts/
-    - assets/fonts/SpaceGrotesk-Medium.ttf
-    - assets/fonts/SpaceGrotesk-Regular.ttf
-    - assets/fonts/SpaceGrotesk-Bold.ttf
-    - assets/fonts/SpaceGrotesk-Light.ttf
-    - assets/fonts/SpaceGrotesk-SemiBold.ttf
-    - assets/fonts/Inter_28pt-Regular.ttf
-    - assets/fonts/Inter_28pt-Medium.ttf
-    - assets/fonts/Inter_28pt-Bold.ttf
-    - assets/fonts/Inter_28pt-Light.ttf
+    - assets/fonts/TikTokSans_28pt-Regular.ttf
+    - assets/fonts/TikTokSans_28pt-Medium.ttf
+    - assets/fonts/TikTokSans_28pt-Bold.ttf
+    - assets/fonts/TikTokSans_28pt-Light.ttf
+    - assets/fonts/DMSans_24pt-Regular.ttf
+    - assets/fonts/DMSans_24pt-Medium.ttf
+    - assets/fonts/DMSans_24pt-Bold.ttf
+    - assets/fonts/DMSans_24pt-Light.ttf
     - assets/icons/
     - assets/images/
     - assets/images/einsteini_black.png
@@ -114,24 +115,36 @@ flutter:
   # list giving the asset and other descriptors for the font. For
   # example:
   fonts:
-    - family: SpaceGrotesk
+    - family: TikTokSans
       fonts:
-        - asset: assets/fonts/SpaceGrotesk-Regular.ttf
-        - asset: assets/fonts/SpaceGrotesk-Medium.ttf
+        - asset: assets/fonts/TikTokSans_28pt-Regular.ttf
+        - asset: assets/fonts/TikTokSans_28pt-Medium.ttf
           weight: 500
-        - asset: assets/fonts/SpaceGrotesk-Bold.ttf
+        - asset: assets/fonts/TikTokSans_28pt-Bold.ttf
           weight: 700
-        - asset: assets/fonts/SpaceGrotesk-Light.ttf
+        - asset: assets/fonts/TikTokSans_28pt-Light.ttf
           weight: 300
-    - family: Inter
+        - asset: assets/fonts/TikTokSans_28pt-Black.ttf
+          weight: 900
+        - asset: assets/fonts/TikTokSans_28pt-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/TikTokSans_28pt-ExtraBold.ttf
+          weight: 800
+    - family: DMSans
       fonts:
-        - asset: assets/fonts/Inter_28pt-Regular.ttf
-        - asset: assets/fonts/Inter_28pt-Medium.ttf
+        - asset: assets/fonts/DMSans_24pt-Regular.ttf
+        - asset: assets/fonts/DMSans_24pt-Medium.ttf
           weight: 500
-        - asset: assets/fonts/Inter_28pt-Bold.ttf
+        - asset: assets/fonts/DMSans_24pt-Bold.ttf
           weight: 700
-        - asset: assets/fonts/Inter_28pt-Light.ttf
+        - asset: assets/fonts/DMSans_24pt-Light.ttf
           weight: 300
+        - asset: assets/fonts/DMSans_24pt-Black.ttf
+          weight: 900
+        - asset: assets/fonts/DMSans_24pt-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/DMSans_24pt-ExtraBold.ttf
+          weight: 800
 
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package

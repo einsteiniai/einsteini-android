@@ -2,11 +2,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:html_unescape/html_unescape.dart';
 
 /// LinkedIn service class to handle LinkedIn specific operations
 class LinkedInService {
   static final LinkedInService _instance = LinkedInService._internal();
   final ApiService _apiService = ApiService();
+  final HtmlUnescape _htmlUnescape = HtmlUnescape();
   
   /// Singleton instance
   factory LinkedInService() {
@@ -233,66 +237,38 @@ class LinkedInService {
       
       final translation = result['translation'] ?? 'Translation error';
       
-      // If formatting for display is requested, add language-specific prefixes
-      if (formatForDisplay) {
-        String translationPrefix = '';
+      // Format the translation with paragraph breaks for better readability
+      String formattedTranslation = translation;
+      if (!formattedTranslation.contains('\n')) {
+        // Break into paragraphs for readability (approximately 3 sentences per paragraph)
+        final RegExp sentenceBreak = RegExp(r'(?<=[.!?])\s');
+        final List<String> sentences = formattedTranslation.split(sentenceBreak);
         
-        // Normalize language name for consistent handling
-        final normalizedLanguage = targetLanguage.toLowerCase();
-        
-        switch (normalizedLanguage) {
-          case 'spanish':
-            translationPrefix = 'Contenido traducido (Español): ';
-            break;
-          case 'french':
-            translationPrefix = 'Contenu traduit (Français): ';
-            break;
-          case 'german':
-            translationPrefix = 'Übersetzter Inhalt (Deutsch): ';
-            break;
-          case 'russian':
-            translationPrefix = 'Переведенный контент (Русский): ';
-            break;
-          case 'japanese':
-            translationPrefix = '翻訳されたコンテンツ (日本語): ';
-            break;
-          case 'mandarin':
-          case 'chinese':
-            translationPrefix = '翻译内容 (中文): ';
-            break;
-          case 'arabic':
-            translationPrefix = 'المحتوى المترجم (العربية): ';
-            break;
-          case 'hindi':
-            translationPrefix = 'अनुवादित सामग्री (हिंदी): ';
-            break;
-          case 'italian':
-            translationPrefix = 'Contenuto tradotto (Italiano): ';
-            break;
-          case 'dutch':
-            translationPrefix = 'Vertaalde inhoud (Nederlands): ';
-            break;
-          case 'kannada':
-            translationPrefix = 'ಅನುವಾದಿತ ವಿಷಯ (ಕನ್ನಡ): ';
-            break;
-          case 'punjabi':
-            translationPrefix = 'ਅਨੁਵਾਦਿਤ ਸਮੱਗਰੀ (ਪੰਜਾਬੀ): ';
-            break;
-          default:
-            translationPrefix = 'Translated content: ';
-            break;
+        if (sentences.length > 3) {
+          StringBuffer paragraphBuilder = StringBuffer();
+          List<String> paragraphs = [];
+          
+          for (int i = 0; i < sentences.length; i++) {
+            paragraphBuilder.write(sentences[i]);
+            paragraphBuilder.write(' ');
+            
+            if ((i + 1) % 3 == 0 && i < sentences.length - 1) {
+              paragraphs.add(paragraphBuilder.toString().trim());
+              paragraphBuilder = StringBuffer();
+            }
+          }
+          
+          if (paragraphBuilder.isNotEmpty) {
+            paragraphs.add(paragraphBuilder.toString().trim());
+          }
+          
+          formattedTranslation = paragraphs.join('\n\n');
         }
-        
-        return {
-          'translation': translation,
-          'formattedTranslation': '$translationPrefix$translation',
-          'language': targetLanguage
-        };
       }
       
-      // Return just the translation if no formatting is needed
       return {
         'translation': translation,
+        'formattedTranslation': formattedTranslation,
         'language': targetLanguage
       };
     } catch (e) {
@@ -364,5 +340,108 @@ class LinkedInService {
       url: url,
       mutual: mutual,
     );
+  }
+
+  /// Fetch LinkedIn OEmbed data for a given post URL
+  /// Returns a map with the necessary data to display the post
+  Future<Map<String, dynamic>> getLinkedInOEmbedData(String postUrl) async {
+    try {
+      debugPrint('Fetching OEmbed data for: $postUrl');
+      
+      // LinkedIn doesn't provide a public OEmbed API, so we'll need to use our server as a proxy
+      // or generate an embed HTML ourselves
+      
+      // First, check if the URL is a LinkedIn URL
+      if (!postUrl.contains('linkedin.com')) {
+        return {
+          'success': false,
+          'error': 'Not a valid LinkedIn URL',
+          'html': null,
+        };
+      }
+      
+      // Option 1: If you have a backend proxy for LinkedIn OEmbed (recommended)
+      final response = await http.get(
+        Uri.parse('https://backend.einsteini.ai/oembed?url=${Uri.encodeComponent(postUrl)}'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        if (data is Map && data.containsKey('html')) {
+          // Unescape HTML entities in the response
+          final String html = _htmlUnescape.convert(data['html'].toString());
+          
+          return {
+            'success': true,
+            'html': html,
+            'title': data['title'] ?? 'LinkedIn Post',
+            'author_name': data['author_name'] ?? 'LinkedIn User',
+            'provider_name': data['provider_name'] ?? 'LinkedIn',
+          };
+        }
+        
+        // If our backend doesn't return proper OEmbed format
+        return {
+          'success': true,
+          'html': _generateEmbedHtml(postUrl),
+          'title': 'LinkedIn Post',
+          'author_name': 'LinkedIn User',
+          'provider_name': 'LinkedIn',
+        };
+      } else {
+        // Fallback: Generate our own embed HTML
+        return {
+          'success': true,
+          'html': _generateEmbedHtml(postUrl),
+          'title': 'LinkedIn Post',
+          'author_name': 'LinkedIn User',
+          'provider_name': 'LinkedIn',
+        };
+      }
+    } catch (e) {
+      debugPrint('Error fetching LinkedIn OEmbed data: $e');
+      
+      // Fallback: Generate our own embed HTML
+      return {
+        'success': true,
+        'html': _generateEmbedHtml(postUrl),
+        'title': 'LinkedIn Post',
+        'author_name': 'LinkedIn User',
+        'provider_name': 'LinkedIn',
+      };
+    }
+  }
+  
+  /// Generate embed HTML for LinkedIn posts
+  String _generateEmbedHtml(String postUrl) {
+    // Create a responsive iframe that will work in a WebView
+    return '''
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+          .container { width: 100%; height: 100%; overflow: hidden; }
+          iframe { width: 100%; height: 100%; border: none; }
+          .linkedin-embed { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; }
+          .linkedin-embed iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="linkedin-embed">
+            <iframe src="$postUrl" frameborder="0" allowfullscreen scrolling="no"></iframe>
+          </div>
+        </div>
+      </body>
+      </html>
+    ''';
   }
 } 

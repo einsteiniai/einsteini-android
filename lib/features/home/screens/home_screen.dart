@@ -12,6 +12,7 @@ import 'package:einsteiniapp/features/home/widgets/ai_assistant_tab.dart';
 import 'package:einsteiniapp/features/home/widgets/history_tab.dart';
 import 'package:einsteiniapp/core/services/history_service.dart';
 import 'package:einsteiniapp/core/services/api_service.dart';
+import 'package:einsteiniapp/core/routes/app_router.dart' as router;
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -25,7 +26,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   String _userName = 'LinkedIn User';
   String _userEmail = 'user@example.com';
   bool _showOverlayPermissionBox = false;
-  bool _showAccessibilityPermissionBox = false;
+  // Remove accessibility permission box variable
+  // bool _showAccessibilityPermissionBox = false;
   bool _overlayEnabled = false;
   
   // Subscription information
@@ -106,11 +108,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
 
   Future<void> _checkPermissions() async {
     final overlayGranted = await PermissionUtils.checkPermissionGranted(AppPermission.overlay);
-    final accessibilityGranted = await PermissionUtils.checkPermissionGranted(AppPermission.accessibility);
+    // Remove accessibility permission check
+    // final accessibilityGranted = await PermissionUtils.checkPermissionGranted(AppPermission.accessibility);
     
     setState(() {
       _showOverlayPermissionBox = !overlayGranted;
-      _showAccessibilityPermissionBox = !accessibilityGranted;
+      // Remove setting for accessibility permission box
+      // _showAccessibilityPermissionBox = !accessibilityGranted;
     });
   }
   
@@ -120,11 +124,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     });
   }
   
+  // Remove dismiss accessibility permission box method
+  /*
   void _dismissAccessibilityPermissionBox() {
     setState(() {
       _showAccessibilityPermissionBox = false;
     });
   }
+  */
   
   // Handle re-analyzing a post from history
   void _handleReanalyzePost(AnalyzedPost post) async {
@@ -184,8 +191,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         physics: const NeverScrollableScrollPhysics(), // Disable swiping
         children: [
           _buildHomeTab(),
-          HistoryTab(onReanalyzePost: _handleReanalyzePost),
           AIAssistantTab(key: _aiAssistantTabKey),
+          HistoryTab(onReanalyzePost: _handleReanalyzePost),
         ],
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
@@ -198,9 +205,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
       case 0:
         return 'Home';
       case 1:
-        return 'History';
-      case 2:
         return 'AI Assistant';
+      case 2:
+        return 'History';
       default:
         return 'einsteini.ai';
     }
@@ -276,8 +283,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             },
           ),
           ListTile(
-            leading: const Icon(Icons.history_outlined),
-            title: const Text('History'),
+            leading: const Icon(Icons.auto_awesome),
+            title: const Text('AI Assistant'),
             selected: _selectedIndex == 1,
             onTap: () {
               setState(() {
@@ -288,8 +295,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             },
           ),
           ListTile(
-            leading: const Icon(Icons.auto_awesome),
-            title: const Text('AI Assistant'),
+            leading: const Icon(Icons.history_outlined),
+            title: const Text('History'),
             selected: _selectedIndex == 2,
             onTap: () {
               setState(() {
@@ -314,6 +321,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             onTap: () {
               Navigator.pop(context);
               context.push(AppRoutes.settings);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.workspace_premium),
+            title: const Text('Upgrade Plan'),
+            onTap: () {
+              Navigator.pop(context);
+              context.push(AppRoutes.plans);
             },
           ),
           const Spacer(),
@@ -354,13 +369,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
               ),
               const SizedBox(height: 16),
             ],
-            if (_showAccessibilityPermissionBox) ...[
-              PermissionReminderBox(
-                permission: AppPermission.accessibility,
-                onDismiss: _dismissAccessibilityPermissionBox,
-              ),
-              const SizedBox(height: 16),
-            ],
+            // Remove accessibility permission box display
+            // if (_showAccessibilityPermissionBox) ...[
+            //   PermissionReminderBox(
+            //     permission: AppPermission.accessibility,
+            //     onDismiss: _dismissAccessibilityPermissionBox,
+            //   ),
+            //   const SizedBox(height: 16),
+            // ],
             _buildWelcomeCard(),
             const SizedBox(height: 24),
             _buildRecentActivitySection(),
@@ -510,6 +526,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             TextButton(
               onPressed: () {
                 // Open subscription page or show upgrade dialog
+                context.push(AppRoutes.plans);
               },
               style: TextButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
@@ -578,9 +595,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 onPressed: () {
                   // Navigate to history tab
                   setState(() {
-                    _selectedIndex = 1;
+                    _selectedIndex = 2;
                   });
-                  _tabController.animateTo(1);
+                  _tabController.animateTo(2);
                 },
                 child: const Text('View All'),
               ),
@@ -633,9 +650,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 onPressed: () {
                   // Navigate to AI Assistant tab
                   setState(() {
-                    _selectedIndex = 2;
+                    _selectedIndex = 1;
                   });
-                  _tabController.animateTo(2);
+                  _tabController.animateTo(1);
                 },
                 icon: const Icon(Icons.add),
                 label: const Text('Analyze a Post'),
@@ -688,9 +705,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         onTap: () {
           // Navigate to the history tab
           setState(() {
-            _selectedIndex = 1;
+            _selectedIndex = 2;
           });
-          _tabController.animateTo(1);
+          _tabController.animateTo(2);
         },
       ),
     );
@@ -715,9 +732,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 title: 'Analyze Post',
                 onTap: () {
                   setState(() {
-                    _selectedIndex = 2;
+                    _selectedIndex = 1;
                   });
-                  _tabController.animateTo(2);
+                  _tabController.animateTo(1);
                 },
               ),
             ),
@@ -728,9 +745,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 title: 'Create Post',
                 onTap: () {
                   setState(() {
-                    _selectedIndex = 2;
+                    _selectedIndex = 1;
                   });
-                  _tabController.animateTo(2);
+                  _tabController.animateTo(1);
                   // Navigate to Create Post tab
                   if (_aiAssistantTabKey.currentState != null) {
                     _aiAssistantTabKey.currentState!.setTabIndex(1);
@@ -749,9 +766,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 title: 'About Me',
                 onTap: () {
                   setState(() {
-                    _selectedIndex = 2;
+                    _selectedIndex = 1;
                   });
-                  _tabController.animateTo(2);
+                  _tabController.animateTo(1);
                   // Navigate to About Me tab
                   if (_aiAssistantTabKey.currentState != null) {
                     _aiAssistantTabKey.currentState!.setTabIndex(2);
@@ -765,6 +782,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             ),
           ],
         ),
+        const SizedBox(height: 12),
+        _buildUpgradeCard(),
       ],
     );
   }
@@ -873,6 +892,64 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     }
   }
   
+  Widget _buildUpgradeCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.workspace_premium,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Unlock Premium Features',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Upgrade to our premium plan to unlock advanced features, unlimited AI analysis, and priority support.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  context.push(AppRoutes.plans);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Upgrade Now'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
   Widget _buildTipsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -957,14 +1034,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.history_outlined),
-            activeIcon: Icon(Icons.history),
-            label: 'History',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.auto_awesome_outlined),
             activeIcon: Icon(Icons.auto_awesome),
             label: 'AI Assistant',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.history_outlined),
+            activeIcon: Icon(Icons.history),
+            label: 'History',
           ),
         ],
         onTap: (index) {
@@ -979,14 +1056,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   
   Widget? _buildFloatingActionButton() {
     // Only show FAB on History tab
-    if (_selectedIndex == 1) {
+    if (_selectedIndex == 2) {  // Updated to match the new index for History tab
       return FloatingActionButton(
         onPressed: () {
           // Navigate to AI Assistant tab
           setState(() {
-            _selectedIndex = 2;
+            _selectedIndex = 1;  // Updated to match the new index for AI Assistant tab
           });
-          _tabController.animateTo(2);
+          _tabController.animateTo(1);
         },
         backgroundColor: Theme.of(context).colorScheme.primary,
         child: const Icon(Icons.add),
