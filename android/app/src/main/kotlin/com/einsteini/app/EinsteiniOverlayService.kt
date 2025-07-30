@@ -36,12 +36,15 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.animation.OvershootInterpolator
 import android.widget.ArrayAdapter
+import android.widget.AdapterView
 import android.widget.Button
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
+import android.widget.RelativeLayout
 import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
@@ -57,6 +60,7 @@ import io.flutter.plugin.common.MethodChannel
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import java.lang.Exception
 import java.lang.Math.abs
 import java.lang.Math.max
@@ -64,6 +68,7 @@ import java.lang.Math.min
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.properties.Delegates
+import kotlinx.coroutines.*
 
 class EinsteiniOverlayService : Service() {
     private lateinit var windowManager: WindowManager
@@ -126,6 +131,15 @@ class EinsteiniOverlayService : Service() {
 
         fun setMethodChannel(channel: MethodChannel) {
             methodChannel = channel
+            Log.d(TAG, "Method channel set successfully. Channel: $channel")
+            Log.d(TAG, "Current instance: $instance")
+            
+            // Method channel is no longer needed since we use direct API calls
+            Log.d(TAG, "Method channel available but using direct API calls instead")
+        }
+        
+        fun isMethodChannelAvailable(): Boolean {
+            return methodChannel != null
         }
 
         fun getInstance(): EinsteiniOverlayService? {
@@ -198,9 +212,9 @@ class EinsteiniOverlayService : Service() {
             screenWidth = metrics.widthPixels
             screenHeight = metrics.heightPixels
             
-            // Initialize with the default theme (will be updated in onStartCommand if needed)
-            isDarkTheme = false
-            Log.d("EinsteiniOverlay", "Initializing with default theme: isDarkTheme=$isDarkTheme")
+            // Initialize with the proper theme from shared preferences
+            isDarkTheme = getInitialThemeFromPreferences()
+            Log.d("EinsteiniOverlay", "Initializing with theme from preferences: isDarkTheme=$isDarkTheme")
             
             // Update instance and running state
             instance = this
@@ -239,10 +253,71 @@ class EinsteiniOverlayService : Service() {
             
             // Register for theme changes from Flutter
             registerThemeChangeReceiver()
+            
+            // Log method channel status
+            Log.d(TAG, "Service created. Method channel available: ${methodChannel != null}")
+            
         } catch (e: Exception) {
             Log.e("EinsteiniOverlay", "Fatal error in onCreate", e)
             stopSelf()
         }
+    }
+    
+    // Helper method to make API calls directly
+    private fun makeApiCall(
+        endpoint: String,
+        jsonBody: String,
+        callback: (String?) -> Unit
+    ) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val url = URL("https://backend.einsteini.ai/api/$endpoint")
+                val connection = url.openConnection() as HttpURLConnection
+                
+                connection.requestMethod = "POST"
+                connection.setRequestProperty("Content-Type", "application/json")
+                connection.setRequestProperty("x-app-platform", "android")
+                connection.doOutput = true
+                connection.doInput = true
+                
+                // Write request body
+                val writer = OutputStreamWriter(connection.outputStream)
+                writer.write(jsonBody)
+                writer.flush()
+                writer.close()
+                
+                // Read response
+                val responseCode = connection.responseCode
+                Log.d(TAG, "API call to $endpoint - Response code: $responseCode")
+                
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    val reader = BufferedReader(InputStreamReader(connection.inputStream))
+                    val response = reader.readText()
+                    reader.close()
+                    
+                    Log.d(TAG, "API response: ${response.take(100)}...")
+                    callback(response)
+                } else {
+                    val errorReader = BufferedReader(InputStreamReader(connection.errorStream ?: connection.inputStream))
+                    val errorResponse = errorReader.readText()
+                    errorReader.close()
+                    
+                    Log.e(TAG, "API error: $responseCode - $errorResponse")
+                    callback(null)
+                }
+                
+                connection.disconnect()
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception in API call", e)
+                callback(null)
+            }
+        }
+    }
+    
+    // Get user email from shared preferences
+    private fun getUserEmail(): String {
+        val sharedPref = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        return sharedPref.getString("flutter.user_email", "") ?: ""
     }
 
     // Override onConfigurationChanged to prevent system theme changes from affecting our UI
@@ -254,6 +329,7 @@ class EinsteiniOverlayService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("EinsteiniOverlay", "Service onStartCommand with intent: $intent, action: ${intent?.action}")
+        Log.d(TAG, "onStartCommand - Method channel available: ${methodChannel != null}")
         
         // Store whether this came from a share
         val wasFromShare = intent?.getBooleanExtra("fromShare", false) ?: false
@@ -285,14 +361,20 @@ class EinsteiniOverlayService : Service() {
                 Log.d("EinsteiniOverlay", "Processing LinkedIn URL: $linkedInUrl, fromShare: $fromShare")
                 
                 if (!linkedInUrl.isNullOrEmpty()) {
-                    // Remove bubble first if it exists
-                    removeBubbleIfExists()
+                    Log.d("EinsteiniOverlay", "About to show bubble for LinkedIn URL")
                     
-                    // Show the overlay window immediately
-                    showOverlayWindow()
+                    // First show the bubble to ensure it's visible
+                    showBubble()
                     
-                    // Process the LinkedIn URL and update the overlay content
-                    processLinkedInUrl(linkedInUrl)
+                    // Add a small delay to ensure bubble is shown before overlay
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        Log.d("EinsteiniOverlay", "About to show overlay window for LinkedIn URL")
+                        // Then show the overlay window (which will keep bubble visible)
+                        showOverlayWindow()
+                        
+                        // Process the LinkedIn URL and update the overlay content
+                        processLinkedInUrl(linkedInUrl)
+                    }, 100) // Small delay to ensure bubble is rendered
                 }
                 
                 return START_STICKY
@@ -303,10 +385,7 @@ class EinsteiniOverlayService : Service() {
                 val translation = intent.getStringExtra("translation") ?: ""
                 val language = intent.getStringExtra("language") ?: ""
                 
-                // Remove bubble first if it exists
-                removeBubbleIfExists()
-                
-                // Make sure the overlay is visible
+                // Make sure the overlay is visible (keep bubble visible)
                 showOverlayWindow()
                 
                 // Show the translated content
@@ -320,10 +399,7 @@ class EinsteiniOverlayService : Service() {
                 val question = intent.getStringExtra("question") ?: ""
                 val thoughtful = intent.getStringExtra("thoughtful") ?: ""
                 
-                // Remove bubble first if it exists
-                removeBubbleIfExists()
-                
-                // Make sure the overlay is visible
+                // Make sure the overlay is visible (keep bubble visible)
                 showOverlayWindow()
                 
                 // Show the comment options
@@ -567,56 +643,31 @@ class EinsteiniOverlayService : Service() {
             val inflater = LayoutInflater.from(contextThemeWrapper)
             overlayView = inflater.inflate(R.layout.overlay_window, null)
             
-            // Get the tab buttons instead of TabLayout
-            val tabButtons = overlayView.findViewById<LinearLayout>(R.id.tabButtons)
-            val tabSummarize = overlayView.findViewById<Button>(R.id.tab_summarize)
-            val tabTranslate = overlayView.findViewById<Button>(R.id.tab_translate)
-            val tabComment = overlayView.findViewById<Button>(R.id.tab_comment)
+            // Get the tab elements (now simple LinearLayout without indicator)
+            val tabContainer = overlayView.findViewById<LinearLayout>(R.id.tabContainer)
+            val tabComment = overlayView.findViewById<TextView>(R.id.tab_comment)
+            val tabTranslate = overlayView.findViewById<TextView>(R.id.tab_translate)
+            val tabSummarize = overlayView.findViewById<TextView>(R.id.tab_summarize)
             
             // Load and apply custom fonts - updated to use TikTok Sans and DM Sans
             val tiktokSans = ResourcesCompat.getFont(this, R.font.tiktok_sans)
             val dmSans = ResourcesCompat.getFont(this, R.font.dm_sans)
             
-            // Apply TikTok Sans font to all tab buttons explicitly
-            tabSummarize.typeface = tiktokSans
+            // Apply TikTok Sans font to all tab TextViews explicitly
             tabTranslate.typeface = tiktokSans
+            tabSummarize.typeface = tiktokSans
             tabComment.typeface = tiktokSans
             
-            // Get content view container for LinkedIn
+            // Get content view containers from XML
             contentViewLinkedIn = overlayView.findViewById(R.id.contentViewLinkedIn)
-            
-            // Create content view containers for Twitter and Comment since they're removed from the XML
-            val frameLayout = (overlayView.findViewById<NestedScrollView>(R.id.contentScrollView))
-                .getChildAt(0) as FrameLayout
-                
-            // Create Twitter content view
-            val twitterView = LinearLayout(this)
-            twitterView.id = View.generateViewId() // Generate a unique ID
-            twitterView.layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-            twitterView.orientation = LinearLayout.VERTICAL
-            twitterView.setPadding(16, 16, 16, 16)
-            twitterView.visibility = View.GONE
-            frameLayout.addView(twitterView)
-            contentViewTwitter = twitterView
-            
-            // Create Comment content view
-            val commentView = LinearLayout(this)
-            commentView.id = View.generateViewId() // Generate a unique ID
-            commentView.layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-            commentView.orientation = LinearLayout.VERTICAL
-            commentView.setPadding(16, 16, 16, 16)
-            commentView.visibility = View.GONE
-            frameLayout.addView(commentView)
-            contentViewComment = commentView
+            contentViewTwitter = overlayView.findViewById(R.id.contentViewTwitter)
+            contentViewComment = overlayView.findViewById(R.id.contentViewComment)
             
             // Apply fonts to all text elements in the overlay
             applyFontsToAllTextViews(overlayView, tiktokSans, dmSans)
+            
+            // Apply initial theme-based styling
+            updateOverlayTheme(isDarkTheme)
             
             // Set up click listener for the scrim to close the overlay
             val overlayScrim = overlayView.findViewById<View>(R.id.overlay_scrim)
@@ -624,32 +675,36 @@ class EinsteiniOverlayService : Service() {
                 hideOverlay()
             }
             
-            // Set background based on theme
+            // Set background based on theme with simple design
             val overlayContainer = overlayView.findViewById<LinearLayout>(R.id.overlay_container)
             overlayContainer.background = ContextCompat.getDrawable(
                 this, 
-                if (isDarkTheme) R.drawable.overlay_rounded_background_dark_bordered else R.drawable.overlay_rounded_background_bordered
+                if (isDarkTheme) R.drawable.overlay_background_dark else R.drawable.overlay_background_light
             )
+            
+            // Update tab navigation styles based on theme
+            updateTabNavigationTheme()
             
             // Setup the dropdowns
             setupSummaryOptions()
             setupTranslationOptions()
             setupCommentOptions()
             
-            // Set up tab button listeners
-            tabSummarize.setOnClickListener {
+            // Set up tab navigation listeners
+            tabComment.setOnClickListener {
                 updateTabs(0)
             }
             
             tabTranslate.setOnClickListener {
+                Log.d("EinsteiniOverlay", "Translate tab clicked")
                 updateTabs(1)
             }
             
-            tabComment.setOnClickListener {
+            tabSummarize.setOnClickListener {
                 updateTabs(2)
             }
             
-            // Default to the first tab
+            // Default to the first tab (Comment)
             updateTabs(0)
             
             // Get reference to the ScrollView
@@ -660,8 +715,9 @@ class EinsteiniOverlayService : Service() {
             var initialTouchY = 0f
             var initialHeight = 0
             
-            // Minimum height is 40% of screen height (same as initial height)
-            val minHeight = (resources.displayMetrics.heightPixels * 0.4).toInt()
+            // Minimum height to ensure tabs are always visible
+            val minHeightCalculated = (resources.displayMetrics.heightPixels * 0.45).toInt()  // Reduced to 45%
+            val minHeight = maxOf(minHeightCalculated, 650) // Reduced to 650dp for better spacing
             
             // Intercept touch events on the resize handle to prevent scroll conflicts
             resizeHandle.setOnTouchListener(object : View.OnTouchListener {
@@ -710,8 +766,8 @@ class EinsteiniOverlayService : Service() {
                 }
             })
             
-            // Add drag functionality to the tab buttons container
-            tabButtons.setOnTouchListener(object : View.OnTouchListener {
+            // Add drag functionality to the tab container
+            tabContainer.setOnTouchListener(object : View.OnTouchListener {
                 private var initialX = 0
                 private var initialY = 0
                 private var initialTouchX = 0f
@@ -773,8 +829,8 @@ class EinsteiniOverlayService : Service() {
             // Get references to the spinner
             val summarySpinner = overlayView.findViewById<Spinner>(R.id.summary_type_spinner)
             
-            // Create an adapter for the spinner with all available summary types from the API
-            val summaryTypes = arrayOf("Brief", "Detailed", "Key Points", "Executive", "Technical")
+            // Create an adapter for the spinner with summary types that match Flutter implementation
+            val summaryTypes = arrayOf("Brief", "Detailed", "Concise")
             val adapter = object : ArrayAdapter<String>(
                 this,
                 android.R.layout.simple_spinner_item,
@@ -783,15 +839,19 @@ class EinsteiniOverlayService : Service() {
                 override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                     val view = super.getView(position, convertView, parent)
                     val textView = view.findViewById<TextView>(android.R.id.text1)
-                    textView.setTextColor(Color.WHITE)
+                    textView.setTextColor(Color.parseColor("#E0E0E0"))
+                    textView.setPadding(16, 16, 16, 16)
+                    textView.textSize = 14f
                     return view
                 }
                 
                 override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
                     val view = super.getDropDownView(position, convertView, parent)
                     val textView = view.findViewById<TextView>(android.R.id.text1)
-                    textView.setTextColor(Color.WHITE)
-                    textView.setPadding(16.dpToPx(), 16.dpToPx(), 16.dpToPx(), 16.dpToPx())
+                    textView.setTextColor(Color.parseColor("#E0E0E0"))
+                    textView.setBackgroundColor(Color.parseColor("#1E1E1E"))
+                    textView.setPadding(16, 16, 16, 16)
+                    textView.textSize = 14f
                     return view
                 }
             }
@@ -811,91 +871,19 @@ class EinsteiniOverlayService : Service() {
         }
     }
     
-    // Setup translation options dropdown (using dynamic creation since the view was removed)
+    // Setup translation options dropdown (using existing XML views)
     private fun setupTranslationOptions() {
         try {
             Log.d("EinsteiniOverlay", "Setting up translation options dynamically")
             
-            // Create the translation options UI programmatically
-            if (contentViewTwitter.childCount == 0) {
-                // Create a card for translation options
-                val translationOptionsCard = CardView(this)
-                translationOptionsCard.layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    setMargins(0, 0, 0, 16.dpToPx())
-                }
-                translationOptionsCard.radius = 12.dpToPx().toFloat()
-                translationOptionsCard.cardElevation = 2.dpToPx().toFloat()
-                translationOptionsCard.setCardBackgroundColor(Color.parseColor("#1A2235"))
-                
-                // Create the content layout for the card
-                val cardContent = LinearLayout(this)
-                cardContent.layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-                cardContent.orientation = LinearLayout.VERTICAL
-                cardContent.setPadding(20.dpToPx(), 20.dpToPx(), 20.dpToPx(), 20.dpToPx())
-                
-                // Add title
-                val titleText = TextView(this)
-                titleText.layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-                titleText.text = "Customize Translation"
-                titleText.textSize = 18f
-                titleText.setTypeface(null, Typeface.BOLD)
-                titleText.setTextColor(Color.parseColor("#BD79FF"))
-                cardContent.addView(titleText)
-                
-                // Add purple divider
-                val divider = View(this)
-                divider.layoutParams = LinearLayout.LayoutParams(40.dpToPx(), 3.dpToPx()).apply {
-                    topMargin = 8.dpToPx()
-                    bottomMargin = 16.dpToPx()
-                }
-                divider.setBackgroundColor(Color.parseColor("#BD79FF"))
-                cardContent.addView(divider)
-                
-                // Add options container with dark background
-                val optionsContainer = LinearLayout(this)
-                optionsContainer.layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-                optionsContainer.orientation = LinearLayout.VERTICAL
-                optionsContainer.setBackgroundResource(R.drawable.overlay_rounded_background_dark)
-                optionsContainer.setPadding(16.dpToPx(), 16.dpToPx(), 16.dpToPx(), 16.dpToPx())
-                
-                // Add language label
-                val languageLabel = TextView(this)
-                languageLabel.layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    bottomMargin = 8.dpToPx()
-                }
-                languageLabel.text = "Target Language"
-                languageLabel.setTextColor(Color.parseColor("#BD79FF"))
-                languageLabel.setTypeface(null, Typeface.BOLD)
-                languageLabel.textSize = 14f
-                optionsContainer.addView(languageLabel)
-                
-                // Add language spinner
-                val languageSpinner = Spinner(this)
-                languageSpinner.id = View.generateViewId()
-                languageSpinner.layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    48.dpToPx()
-                )
-                languageSpinner.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#BD79FF"))
-                
-                // Create adapter for language spinner
+            // The translation UI is now in XML, so we just need to set up the language spinner
+            val languageSpinner = contentViewTwitter.findViewById<Spinner>(R.id.language_spinner)
+            val generateButton = contentViewTwitter.findViewById<Button>(R.id.generate_translation_button)
+            
+            if (languageSpinner != null && generateButton != null) {
+                // Setup language spinner with options that match Flutter implementation
                 val languages = arrayOf("Spanish", "French", "German", "Italian", "Portuguese", "Chinese", "Japanese", "Korean", "Russian", "Arabic")
-                val adapter = object : ArrayAdapter<String>(
+                val languageAdapter = object : ArrayAdapter<String>(
                     this,
                     android.R.layout.simple_spinner_item,
                     languages
@@ -903,60 +891,36 @@ class EinsteiniOverlayService : Service() {
                     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                         val view = super.getView(position, convertView, parent)
                         val textView = view.findViewById<TextView>(android.R.id.text1)
-                        textView.setTextColor(Color.WHITE)
+                        textView.setTextColor(Color.parseColor("#E0E0E0"))
+                        textView.setPadding(16, 16, 16, 16)
+                        textView.textSize = 14f
                         return view
                     }
                     
                     override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
                         val view = super.getDropDownView(position, convertView, parent)
                         val textView = view.findViewById<TextView>(android.R.id.text1)
-                        textView.setTextColor(Color.WHITE)
-                        textView.setPadding(16.dpToPx(), 16.dpToPx(), 16.dpToPx(), 16.dpToPx())
+                        textView.setTextColor(Color.parseColor("#E0E0E0"))
+                        textView.setBackgroundColor(Color.parseColor("#1E1E1E"))
+                        textView.setPadding(16, 16, 16, 16)
+                        textView.textSize = 14f
                         return view
                     }
                 }
-                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-                languageSpinner.adapter = adapter
-                optionsContainer.addView(languageSpinner)
+                languageAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                languageSpinner.adapter = languageAdapter
                 
-                // Add generate button
-                val generateButton = Button(this)
-                generateButton.layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    56.dpToPx()
-                ).apply {
-                    topMargin = 16.dpToPx()
-                }
-                generateButton.text = "Generate Translation"
-                generateButton.setTextColor(Color.WHITE)
-                generateButton.textSize = 15f
-                generateButton.isAllCaps = false
-                generateButton.setBackgroundColor(Color.parseColor("#BD79FF"))
+                // Setup button click listener
                 generateButton.setOnClickListener {
-                    val selectedLanguage = languages[languageSpinner.selectedItemPosition]
+                    val selectedLanguage = languageSpinner.selectedItem.toString()
+                    Log.d("EinsteiniOverlay", "Generate translation clicked: $selectedLanguage")
                     generateTranslation(selectedLanguage)
                 }
-                optionsContainer.addView(generateButton)
                 
-                // Add options to card content
-                cardContent.addView(optionsContainer)
-                
-                // Add content to card
-                translationOptionsCard.addView(cardContent)
-                
-                // Add card to translation view
-                contentViewTwitter.addView(translationOptionsCard)
-                
-                // Add content container for original text
-                val originalTextCard = createContentBlock("Original Text", "Select a language and click Generate Translation to translate the content.")
-                contentViewTwitter.addView(originalTextCard)
-                
-                // Add content container for translated text
-                val translatedTextCard = createContentBlock("Translated Text", "Translation will appear here.")
-                contentViewTwitter.addView(translatedTextCard)
+                Log.d("EinsteiniOverlay", "Translation UI setup completed")
+            } else {
+                Log.e("EinsteiniOverlay", "Translation UI elements not found in XML")
             }
-            
-            Log.d("EinsteiniOverlay", "Translation UI setup completed")
         } catch (e: Exception) {
             Log.e("EinsteiniOverlay", "Error setting up translation options", e)
         }
@@ -967,306 +931,632 @@ class EinsteiniOverlayService : Service() {
         return (this * resources.displayMetrics.density).toInt()
     }
     
-    // Setup comment options dropdowns
+    // Setup comment options dropdowns (using existing XML views)
     private fun setupCommentOptions() {
         try {
             Log.d("EinsteiniOverlay", "Setting up comment options dynamically")
             
-            // We've removed the comment UI from the XML, so we'll add these elements programmatically
-            // This is a stub implementation since the UI has been redesigned
-            // In a real implementation, you would add these elements to the contentViewComment
+            // The comment UI is now in XML, so we just need to set up the spinner
+            val toneSpinner = contentViewComment.findViewById<Spinner>(R.id.tone_spinner)
+            val generateButton = contentViewComment.findViewById<Button>(R.id.generate_comment_button)
+            val copyButton = contentViewComment.findViewById<Button>(R.id.copy_comment_button)
             
-            // Just log that we're skipping this for now
-            Log.d("EinsteiniOverlay", "Comment UI setup skipped as the UI has been redesigned")
+            if (toneSpinner != null && generateButton != null) {
+                // Setup tone spinner - these match the Flutter implementation exactly
+                val tones = arrayOf("Applaud", "Agree", "Fun", "Personalize", "Perspective", "Question", "Contradict")
+                val toneAdapter = object : ArrayAdapter<String>(
+                    this,
+                    android.R.layout.simple_spinner_item,
+                    tones
+                ) {
+                    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                        val view = super.getView(position, convertView, parent)
+                        val textView = view.findViewById<TextView>(android.R.id.text1)
+                        textView.setTextColor(Color.parseColor("#E0E0E0"))
+                        textView.setPadding(16, 16, 16, 16)
+                        textView.textSize = 14f
+                        return view
+                    }
+                    
+                    override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
+                        val view = super.getDropDownView(position, convertView, parent)
+                        val textView = view.findViewById<TextView>(android.R.id.text1)
+                        textView.setTextColor(Color.parseColor("#E0E0E0"))
+                        textView.setBackgroundColor(Color.parseColor("#1E1E1E"))
+                        textView.setPadding(16, 16, 16, 16)
+                        textView.textSize = 14f
+                        return view
+                    }
+                }
+                toneAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                toneSpinner.adapter = toneAdapter
+                
+                // Setup spinner selection listener to show/hide personalization fields
+                toneSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                    override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                        val selectedTone = tones[position]
+                        Log.d("EinsteiniOverlay", "Selected tone: $selectedTone")
+                        
+                        // Show/hide personalization fields based on selection
+                        val personalizationContainer = contentViewComment.findViewById<LinearLayout>(R.id.personalization_container)
+                        if (selectedTone == "Personalize") {
+                            personalizationContainer?.visibility = View.VISIBLE
+                            setupPersonalizationFields()
+                        } else {
+                            personalizationContainer?.visibility = View.GONE
+                        }
+                    }
+                    
+                    override fun onNothingSelected(parent: AdapterView<*>?) {}
+                }
+                
+                // Setup personalization fields
+                setupPersonalizationFields()
+                
+                // Setup button click listener
+                generateButton.setOnClickListener {
+                    val selectedTone = toneSpinner.selectedItem.toString()
+                    Log.d("EinsteiniOverlay", "Generate comment clicked: tone=$selectedTone")
+                    
+                    if (selectedTone == "Personalize") {
+                        generatePersonalizedComment()
+                    } else {
+                        // Use the selected tone as the comment type
+                        generateComment(selectedTone.lowercase(), "professional")
+                    }
+                }
+                
+                // Setup copy button click listener
+                copyButton?.setOnClickListener {
+                    val commentContent = contentViewComment.findViewById<TextView>(R.id.comment_content)
+                    val commentText = commentContent?.text?.toString()
+                    
+                    if (!commentText.isNullOrBlank() && 
+                        commentText != "Your generated comment will appear here." &&
+                        !commentText.contains("Generating")) {
+                        
+                        // Copy to clipboard
+                        val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clipData = android.content.ClipData.newPlainText("Comment", commentText)
+                        clipboardManager.setPrimaryClip(clipData)
+                        
+                        // Show toast to confirm copy
+                        android.widget.Toast.makeText(this, "Comment copied to clipboard!", android.widget.Toast.LENGTH_SHORT).show()
+                        
+                        Log.d("EinsteiniOverlay", "Comment copied to clipboard: ${commentText.take(50)}...")
+                    } else {
+                        android.widget.Toast.makeText(this, "No comment to copy", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+                
+                Log.d("EinsteiniOverlay", "Comment UI setup completed")
+            } else {
+                Log.e("EinsteiniOverlay", "Comment UI elements not found in XML")
+            }
         } catch (e: Exception) {
             Log.e("EinsteiniOverlay", "Error setting up comment options", e)
+        }
+    }
+    
+    // Setup personalization fields
+    private fun setupPersonalizationFields() {
+        try {
+            val personalizationToneField = contentViewComment.findViewById<EditText>(R.id.personalization_tone_field)
+            if (personalizationToneField != null) {
+                // Don't prefill the tone - let user enter their own
+                personalizationToneField.hint = "e.g., Professional, Casual, Supportive"
+                
+                // Apply theme-appropriate styling
+                personalizationToneField.setTextColor(if (isDarkTheme) Color.parseColor("#E0E0E0") else Color.parseColor("#333333"))
+                personalizationToneField.setHintTextColor(if (isDarkTheme) Color.parseColor("#666666") else Color.parseColor("#888888"))
+            }
+        } catch (e: Exception) {
+            Log.e("EinsteiniOverlay", "Error setting up personalization tone field", e)
+        }
+    }
+    
+    // Generate personalized comment using XML fields
+    private fun generatePersonalizedComment() {
+        try {
+            Log.d("EinsteiniOverlay", "Generating personalized comment")
+            
+            val commentContent = contentViewComment.findViewById<TextView>(R.id.comment_content)
+            commentContent?.text = "Generating personalized comment..."
+            
+            // Hide copy button while generating
+            val copyButton = contentViewComment.findViewById<Button>(R.id.copy_comment_button)
+            copyButton?.visibility = View.GONE
+            
+            // Get personalization details from XML elements
+            val personalizationToneField = contentViewComment.findViewById<EditText>(R.id.personalization_tone_field)
+            val personalizationDetails = contentViewComment.findViewById<EditText>(R.id.personalization_details)
+            
+            val personalTone = personalizationToneField?.text?.toString()?.takeIf { it.isNotBlank() } ?: "Professional"
+            val personalDetails = personalizationDetails?.text?.toString() ?: ""
+            
+            Log.d("EinsteiniOverlay", "Personalization - Tone: $personalTone, Details: $personalDetails")
+            
+            // Get content from scraped data
+            val content = scrapedData["content"] as? String ?: ""
+            val author = scrapedData["author"] as? String ?: "Author"
+            
+            val finalContent = if (content.isBlank()) {
+                "This is a sample LinkedIn post about the importance of continuous learning in technology."
+            } else {
+                content
+            }
+            
+            // Clean up the content
+            var cleanedContent = finalContent
+                .replace(Regex("\\n+"), " ")
+                .replace(Regex("\\s+"), " ")
+                .replace("…more", "")
+                .trim()
+            
+            if (cleanedContent.length > 300) {
+                cleanedContent = cleanedContent.substring(0, 300) + "..."
+            }
+            
+            // Create personalized prompt
+            val basePrompt = "Generate a $personalTone tone comment for a LinkedIn post by $author: $cleanedContent"
+            val fullPrompt = if (personalDetails.isNotBlank()) {
+                "$basePrompt. Additional instructions: $personalDetails"
+            } else {
+                basePrompt
+            }
+            
+            Log.d("EinsteiniOverlay", "Using personalized prompt: $fullPrompt")
+            
+            // Create JSON body
+            val jsonBody = JSONObject().apply {
+                put("requestContext", JSONObject().put("httpMethod", "POST"))
+                put("prompt", fullPrompt)
+                put("email", getUserEmail())
+            }.toString()
+            
+            // Make API call
+            makeApiCall("comment", jsonBody) { response ->
+                Handler(Looper.getMainLooper()).post {
+                    try {
+                        if (response != null) {
+                            var comment = response
+                            
+                            // Parse response exactly like Flutter's ApiService does
+                            try {
+                                val responseJson = JSONObject(response)
+                                comment = if (responseJson.has("text")) {
+                                    responseJson.getString("text")
+                                } else if (responseJson.has("comment")) {
+                                    responseJson.getString("comment")
+                                } else if (responseJson.has("response")) {
+                                    responseJson.getString("response")
+                                } else {
+                                    responseJson.toString()
+                                }
+                            } catch (e: Exception) {
+                                comment = response
+                            }
+                            
+                            val cleanedComment = if (comment?.startsWith("\"") == true && comment.endsWith("\"")) {
+                                comment.substring(1, comment.length - 1)
+                            } else {
+                                comment ?: "Unable to generate personalized comment"
+                            }
+                            
+                            commentContent?.text = cleanedComment
+                            copyButton?.visibility = View.VISIBLE
+                            
+                            Log.d("EinsteiniOverlay", "Personalized comment generated: ${cleanedComment.take(50)}...")
+                        } else {
+                            commentContent?.text = "This looks like an exciting opportunity in the tech space!"
+                            copyButton?.visibility = View.VISIBLE
+                        }
+                    } catch (e: Exception) {
+                        Log.e("EinsteiniOverlay", "Error processing personalized comment response", e)
+                        commentContent?.text = "Great opportunity for developers interested in AI and software development!"
+                        copyButton?.visibility = View.VISIBLE
+                    }
+                }
+            }
+            
+        } catch (e: Exception) {
+            Log.e("EinsteiniOverlay", "Error generating personalized comment", e)
+            val commentContent = contentViewComment.findViewById<TextView>(R.id.comment_content)
+            commentContent?.text = "Great opportunity for developers interested in AI and software development!"
+            
+            val copyButton = contentViewComment.findViewById<Button>(R.id.copy_comment_button)
+            copyButton?.visibility = View.VISIBLE
         }
     }
     
     // Generate summary based on selected type
     private fun generateSummary(summaryType: String) {
         try {
-            // Update the UI to show loading state
+            Log.d("EinsteiniOverlay", "Generating summary of type: $summaryType")
+            
             val blockContent = contentViewLinkedIn.findViewById<TextView>(R.id.block_content)
             blockContent?.text = "Generating $summaryType summary..."
-            
-            // Clear key points until we get new ones
-            val keyPointsContent = contentViewLinkedIn.findViewById<TextView>(R.id.key_points_content)
-            keyPointsContent?.text = "Loading key points..."
-            
-            // Create a map to hold the scraped data for the API call
-            val dataToSend = HashMap<String, Any>()
             
             // Get the content and author from our stored data
             val content = scrapedData["content"] as? String ?: ""
             val author = scrapedData["author"] as? String ?: ""
             
-            // Map the UI summary type to the API expected format
+            // Map the UI summary type to the API expected format (match Flutter implementation)
             val apiSummaryType = when (summaryType.toLowerCase()) {
                 "brief" -> "brief"
                 "detailed" -> "detailed"
-                "key points" -> "keypoints"
-                "executive" -> "executive"
-                "technical" -> "technical"
+                "concise" -> "concise"
                 else -> "brief"
             }
             
-            dataToSend["content"] = content
-            dataToSend["author"] = author
-            dataToSend["summaryType"] = apiSummaryType
-            dataToSend["style"] = apiSummaryType // Add style parameter
+            val finalContent = if (content.isBlank()) {
+                Log.w(TAG, "No content available for summarization, using test content")
+                "This is a sample LinkedIn post about the importance of continuous learning in technology. The tech industry evolves rapidly, and staying updated with the latest trends, frameworks, and best practices is crucial for career growth. Whether it's learning a new programming language, understanding cloud computing, or exploring AI and machine learning, the journey of learning never stops. Embracing this mindset not only enhances professional skills but also opens doors to new opportunities and innovations."
+            } else {
+                content
+            }
             
             Log.d(TAG, "Generating summary with type: $apiSummaryType")
+            Log.d(TAG, "Content length: ${finalContent.length}")
             
-            // Call the Flutter method channel to get the summary
-            methodChannel?.invokeMethod("generateSummary", dataToSend, object : MethodChannel.Result {
-                override fun success(result: Any?) {
-                    Handler(Looper.getMainLooper()).post {
-                        try {
-                            if (result is Map<*, *>) {
-                                val summary = result["summary"] as? String ?: "Failed to generate summary"
-                                val keyPoints = result["keyPoints"] as? List<*> ?: emptyList<String>()
-                                val error = result["error"] as? String
-                                
-                                if (error != null && error.isNotEmpty()) {
-                                    Log.e(TAG, "Error in summary response: $error")
-                                    blockContent?.text = "Error: $error"
-                                    keyPointsContent?.text = "• No key points available due to error"
-                                    return@post
-                                }
-                                
-                                // Update the UI with the summary
-                                blockContent?.text = summary
-                                
-                                // Update key points section
-                                if (keyPoints.isNotEmpty()) {
-                                    val formattedPoints = keyPoints.joinToString("\n") { "• $it" }
-                                    keyPointsContent?.text = formattedPoints
-                                } else {
-                                    // Try to extract key points from the summary if none provided
-                                    val extractedPoints = extractKeyPointsFromSummary(summary)
-                                    if (extractedPoints.isNotEmpty()) {
-                                        val formattedPoints = extractedPoints.joinToString("\n") { "• $it" }
-                                        keyPointsContent?.text = formattedPoints
+            // Create JSON body for API call
+            val jsonBody = JSONObject().apply {
+                put("requestContext", JSONObject().put("httpMethod", "POST"))
+                put("text", finalContent)
+                put("email", getUserEmail())
+                put("style", apiSummaryType)
+            }.toString()
+            
+            // Make direct API call
+            makeApiCall("summarize", jsonBody) { response ->
+                Handler(Looper.getMainLooper()).post {
+                    try {
+                        if (response != null) {
+                            var summary = response
+                            
+                            // Try to parse as JSON first, fallback to plain text
+                            try {
+                                val responseJson = JSONObject(response)
+                                summary = if (responseJson.has("body")) {
+                                    if (responseJson.get("body") is String) {
+                                        responseJson.getString("body")
                                     } else {
-                                        keyPointsContent?.text = "• No key points extracted"
+                                        responseJson.getJSONObject("body").optString("summary", responseJson.getString("body"))
                                     }
+                                } else {
+                                    responseJson.optString("summary", response)
                                 }
-                            } else {
-                                blockContent?.text = "Error: Unable to generate summary"
-                                keyPointsContent?.text = "• No key points extracted"
-                                Log.e(TAG, "Summary result is not in expected format: $result")
+                            } catch (e: Exception) {
+                                // Response is likely plain text, use as-is
+                                Log.d(TAG, "Response is plain text, using directly")
                             }
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Error processing summary result", e)
-                            blockContent?.text = "Error: ${e.message}"
-                            keyPointsContent?.text = "• No key points extracted"
+                            
+                            // Ensure summary is not null
+                            val safeSummary = summary ?: "Unable to generate summary"
+                            
+                            // Clean up the response (remove quotes if present)
+                            var cleanedSummary = if (safeSummary.startsWith("\"") && safeSummary.endsWith("\"")) {
+                                safeSummary.substring(1, safeSummary.length - 1)
+                            } else {
+                                safeSummary
+                            }
+                            
+                            // Remove irrelevant post details from summary
+                            cleanedSummary = cleanedSummary.replace(Regex("Post details:.*?(?=\\n|$)", RegexOption.DOT_MATCHES_ALL), "")
+                                .replace(Regex("Author:.*?(?=\\n|$)"), "")
+                                .replace(Regex("Posted on:.*?(?=\\n|$)"), "")
+                                .replace(Regex("Likes:.*?(?=\\n|$)"), "")
+                                .replace(Regex("Comments:.*?(?=\\n|$)"), "")
+                                .trim()
+                            
+                            blockContent?.text = cleanedSummary
+                            Log.d(TAG, "Summary generated successfully")
+                        } else {
+                            blockContent?.text = "Unable to generate summary at this time. Please try again later."
+                            Log.e(TAG, "Failed to generate summary - null response")
                         }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error processing summary response", e)
+                        blockContent?.text = "Error processing summary. Please try again."
                     }
                 }
-                
-                override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
-                    Handler(Looper.getMainLooper()).post {
-                        blockContent?.text = "Error: $errorMessage"
-                        keyPointsContent?.text = "• No key points extracted"
-                        Log.e(TAG, "Summary error: $errorCode - $errorMessage")
-                    }
-                }
-                
-                override fun notImplemented() {
-                    Handler(Looper.getMainLooper()).post {
-                        blockContent?.text = "Summary generation not implemented"
-                        keyPointsContent?.text = "• No key points extracted"
-                        Log.e(TAG, "Summary generation not implemented")
-                    }
-                }
-            })
+            }
+            
         } catch (e: Exception) {
             Log.e(TAG, "Error generating summary", e)
             
             // Show error in UI
             val blockContent = contentViewLinkedIn.findViewById<TextView>(R.id.block_content)
             blockContent?.text = "Error: ${e.message}"
-            
-            // Clear key points since there was an error
-            val keyPointsContent = contentViewLinkedIn.findViewById<TextView>(R.id.key_points_content)
-            keyPointsContent?.text = "• No key points extracted"
         }
-    }
-    
-    // Helper function to extract key points from a summary text
-    private fun extractKeyPointsFromSummary(summary: String): List<String> {
-        val keyPoints = mutableListOf<String>()
-        
-        // Try to extract bullet points
-        val bulletMatches = Regex("""•\s*([^\n•]+)""").findAll(summary)
-        keyPoints.addAll(bulletMatches.map { it.groupValues[1].trim() }.toList())
-        
-        // If no bullet points found, look for numbered lists
-        if (keyPoints.isEmpty()) {
-            val numberMatches = Regex("""(\d+)[\.)\]]\s*([^\n]+)""").findAll(summary)
-            keyPoints.addAll(numberMatches.map { it.groupValues[2].trim() }.toList())
-        }
-        
-        // If still no points found, try to split by sentences and take the first few
-        if (keyPoints.isEmpty()) {
-            val sentences = summary.split(Regex("""[.!?][\s\n]+""")).filter { it.isNotEmpty() }
-            if (sentences.size > 1) {
-                keyPoints.addAll(sentences.take(3).map { it.trim() })
-            }
-        }
-        
-        return keyPoints
     }
     
     // Generate translation based on selected language
+    // Generate translation based on selected language  
     private fun generateTranslation(language: String) {
         try {
-            Log.d("EinsteiniOverlay", "Generating translation for language: $language")
+            Log.d("EinsteiniOverlay", "Generating translation to: $language")
+            Log.d(TAG, "contentViewLinkedIn status: ${if (::contentViewLinkedIn.isInitialized) "initialized" else "not initialized"}")
+            Log.d(TAG, "overlayView status: ${if (::overlayView.isInitialized) "initialized" else "not initialized"}")
             
-            // Get the content blocks
-            val contentBlocks = contentViewTwitter.children.filterIsInstance<LinearLayout>().toList()
+            // Try to find the translation content TextView from both contentViewLinkedIn and overlayView
+            var translationContent: TextView? = null
             
-            // Update UI to show loading state
-            if (contentBlocks.size > 2) {
-                val translatedTextBlock = contentBlocks[2]
-                val translatedTextView = translatedTextBlock.findViewById<TextView>(android.R.id.text1)
-                translatedTextView?.text = "Translating to $language..."
+            if (::contentViewLinkedIn.isInitialized) {
+                translationContent = contentViewLinkedIn.findViewById<TextView>(R.id.translation_content)
+                Log.d(TAG, "Found translation_content from contentViewLinkedIn: ${translationContent != null}")
             }
             
-            // Create a map to hold the data for the API call
-            val dataToSend = HashMap<String, Any>()
+            if (translationContent == null && ::overlayView.isInitialized) {
+                translationContent = overlayView.findViewById<TextView>(R.id.translation_content)
+                Log.d(TAG, "Found translation_content from overlayView: ${translationContent != null}")
+            }
+            
+            if (translationContent == null) {
+                Log.e(TAG, "Translation content TextView not found in either view!")
+                if (::contentViewLinkedIn.isInitialized) {
+                    Log.d(TAG, "Available child views in contentViewLinkedIn:")
+                    for (i in 0 until contentViewLinkedIn.childCount) {
+                        val child = contentViewLinkedIn.getChildAt(i)
+                        Log.d(TAG, "Child $i: ${child.javaClass.simpleName} with id: ${child.id}")
+                        if (child is ViewGroup) {
+                            for (j in 0 until child.childCount) {
+                                val grandChild = child.getChildAt(j)
+                                Log.d(TAG, "  GrandChild $j: ${grandChild.javaClass.simpleName} with id: ${grandChild.id}")
+                            }
+                        }
+                    }
+                }
+                return
+            }
+            
+            translationContent.text = "Translating to $language..."
+            Log.d(TAG, "Translation UI updated with loading text")
             
             // Get the content from our stored data
             val content = scrapedData["content"] as? String ?: ""
             
-            dataToSend["content"] = content
-            dataToSend["targetLanguage"] = language
-            dataToSend["email"] = "android@einsteini.ai" // Add default email for Android
-            
-            // Update original text block with the content to be translated
-            if (contentBlocks.size > 1) {
-                val originalTextBlock = contentBlocks[1]
-                val originalTextView = originalTextBlock.getChildAt(1) as? TextView
-                originalTextView?.text = content
+            val finalContent = if (content.isBlank()) {
+                Log.w(TAG, "No content available for translation, using test content")
+                "This is a sample LinkedIn post about the importance of continuous learning in technology."
+            } else {
+                content
             }
             
-            // Call the Flutter method channel to get the translation
-            methodChannel?.invokeMethod("generateTranslation", dataToSend, object : MethodChannel.Result {
-                override fun success(result: Any?) {
-                    Handler(Looper.getMainLooper()).post {
-                        try {
-                            if (result is Map<*, *>) {
-                                val translation = result["translation"] as? String ?: "Failed to generate translation"
-                                
-                                // Update the UI with the translation
-                                if (contentBlocks.size > 2) {
-                                    val translatedTextBlock = contentBlocks[2]
-                                    val translationTitleView = translatedTextBlock.getChildAt(0) as? TextView
-                                    val translatedTextView = translatedTextBlock.getChildAt(1) as? TextView
-                                    
-                                    translationTitleView?.text = "$language Translation"
-                                    translatedTextView?.text = translation
+            // Clean content like Flutter does
+            val cleanedContent = finalContent
+                .replace(Regex("\\n+"), " ") // Replace newlines with spaces
+                .replace(Regex("\\s+"), " ") // Replace multiple spaces with single space
+                .replace("…more", "") // Remove LinkedIn "...more" text
+                .trim()
+            
+            Log.d(TAG, "Translating content to: $language")
+            Log.d(TAG, "Content length: ${cleanedContent.length}")
+            
+            // Create JSON body matching Flutter implementation exactly
+            val jsonBody = JSONObject().apply {
+                put("text", cleanedContent)
+                put("targetLanguage", language)
+                put("email", getUserEmail())
+            }.toString()
+            
+            // Make direct API call
+            makeApiCall("translate", jsonBody) { response ->
+                Handler(Looper.getMainLooper()).post {
+                    try {
+                        if (response != null) {
+                            var translation = response
+                            Log.d(TAG, "Translation response: $response")
+                            
+                            // Try to parse as JSON first, fallback to plain text
+                            try {
+                                val responseJson = JSONObject(response)
+                                translation = if (responseJson.has("body")) {
+                                    if (responseJson.get("body") is String) {
+                                        responseJson.getString("body")
+                                    } else {
+                                        val bodyObj = responseJson.getJSONObject("body")
+                                        bodyObj.optString("translation", bodyObj.toString())
+                                    }
+                                } else {
+                                    responseJson.optString("translation", response)
                                 }
+                            } catch (e: Exception) {
+                                // Response is likely plain text, use as-is
+                                Log.d(TAG, "Translation response is plain text, using directly")
+                            }
+                            
+                            // Ensure translation is not null
+                            val safeTranslation = translation ?: "Unable to generate translation"
+                            
+                            // Clean up the response
+                            val cleanedTranslation = if (safeTranslation.startsWith("\"") && safeTranslation.endsWith("\"")) {
+                                safeTranslation.substring(1, safeTranslation.length - 1)
                             } else {
-                                if (contentBlocks.size > 2) {
-                                    val translatedTextBlock = contentBlocks[2]
-                                    val translatedTextView = translatedTextBlock.getChildAt(1) as? TextView
-                                    translatedTextView?.text = "Error: Unable to generate translation"
-                                }
-                                Log.e(TAG, "Translation result is not in expected format: $result")
+                                safeTranslation
                             }
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Error processing translation result", e)
-                            if (contentBlocks.size > 2) {
-                                val translatedTextBlock = contentBlocks[2]
-                                val translatedTextView = translatedTextBlock.getChildAt(1) as? TextView
-                                translatedTextView?.text = "Error: ${e.message}"
-                            }
+                            
+                            translationContent.text = cleanedTranslation
+                            Log.d(TAG, "Translation generated successfully: ${cleanedTranslation.take(50)}...")
+                        } else {
+                            translationContent.text = "Unable to generate translation at this time. Please try again later."
+                            Log.e(TAG, "Failed to generate translation - null response")
                         }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error processing translation response", e)
+                        translationContent.text = "Error processing translation. Please try again."
                     }
                 }
-                
-                override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
-                    Handler(Looper.getMainLooper()).post {
-                        if (contentBlocks.size > 2) {
-                            val translatedTextBlock = contentBlocks[2]
-                            val translatedTextView = translatedTextBlock.getChildAt(1) as? TextView
-                            translatedTextView?.text = "Error: $errorMessage"
-                        }
-                        Log.e(TAG, "Translation error: $errorCode - $errorMessage")
-                    }
-                }
-                
-                override fun notImplemented() {
-                    Handler(Looper.getMainLooper()).post {
-                        if (contentBlocks.size > 2) {
-                            val translatedTextBlock = contentBlocks[2]
-                            val translatedTextView = translatedTextBlock.getChildAt(1) as? TextView
-                            translatedTextView?.text = "Translation generation not implemented"
-                        }
-                        Log.e(TAG, "Translation generation not implemented")
-                    }
-                }
-            })
+            }
+            
         } catch (e: Exception) {
             Log.e(TAG, "Error generating translation", e)
             
-            // Show error in UI
-            val contentBlocks = contentViewTwitter.children.filterIsInstance<LinearLayout>().toList()
-            if (contentBlocks.size > 2) {
-                val translatedTextBlock = contentBlocks[2]
-                val translatedTextView = translatedTextBlock.getChildAt(1) as? TextView
-                translatedTextView?.text = "Error: ${e.message}"
+            // Try to find translation content to show error
+            var errorTranslationContent: TextView? = null
+            if (::contentViewLinkedIn.isInitialized) {
+                errorTranslationContent = contentViewLinkedIn.findViewById<TextView>(R.id.translation_content)
             }
+            if (errorTranslationContent == null && ::overlayView.isInitialized) {
+                errorTranslationContent = overlayView.findViewById<TextView>(R.id.translation_content)
+            }
+            errorTranslationContent?.text = "Error: ${e.message}"
         }
     }
     
-    // Generate comment based on selected type and tone
+    // Generate comment based on selected type and tone - Updated to match Flutter app logic exactly
     private fun generateComment(commentType: String, commentTone: String) {
         try {
             Log.d("EinsteiniOverlay", "Generating $commentType comment with $commentTone tone")
             
-            // In our new UI, we don't have these specific elements anymore
-            // This is a stub implementation since the UI has been redesigned
-            // In a real implementation, you would update your UI elements with the comment
+            // Try to find the comment content TextView from both contentViewComment and overlayView
+            var commentContent: TextView? = null
             
-            // Show a toast to indicate what would happen in the real app
-            Handler(Looper.getMainLooper()).post {
-                Toast.makeText(this, "Generating $commentType comment with $commentTone tone...", Toast.LENGTH_SHORT).show()
+            if (::contentViewComment.isInitialized) {
+                commentContent = contentViewComment.findViewById<TextView>(R.id.comment_content)
+                Log.d(TAG, "Found comment_content from contentViewComment: ${commentContent != null}")
             }
             
-            // In a real implementation, you would call your API here
-            // For now, we'll simulate a delay and then update with sample content
-            Handler(Looper.getMainLooper()).postDelayed({
-                // Generate different comments based on type and tone
-                val professionalComment = "This is a $commentType comment with a $commentTone tone. Thank you for sharing these insights! I've been exploring similar implementation strategies in my work."
-                
-                val questionComment = when (commentType) {
-                    "Question" -> "I'm curious to learn more about this topic. Could you elaborate on how you implemented these strategies in your specific context?"
-                    "Appreciation" -> "I really appreciate you sharing this valuable information! What inspired you to focus on this particular approach?"
-                    "Critique" -> "Interesting perspective, though I wonder if you've considered alternative approaches? What are your thoughts on [alternative method]?"
-                    "Addition" -> "Great points! I'd also add that [additional insight] can further enhance these strategies. Have you explored that aspect as well?"
-                    else -> "This is very interesting! Could you share more about specific tools your team has found most effective?"
+            if (commentContent == null && ::contentViewLinkedIn.isInitialized) {
+                commentContent = contentViewLinkedIn.findViewById<TextView>(R.id.comment_content)
+                Log.d(TAG, "Found comment_content from contentViewLinkedIn: ${commentContent != null}")
+            }
+            
+            if (commentContent == null && ::overlayView.isInitialized) {
+                commentContent = overlayView.findViewById<TextView>(R.id.comment_content)
+                Log.d(TAG, "Found comment_content from overlayView: ${commentContent != null}")
+            }
+            
+            if (commentContent == null) {
+                Log.e(TAG, "Comment content TextView not found in any view!")
+                return
+            }
+            
+            commentContent.text = "Generating $commentType comment..."
+            
+            // Hide copy button while generating
+            val copyButton = contentViewComment.findViewById<Button>(R.id.copy_comment_button)
+            copyButton?.visibility = View.GONE
+            
+            Log.d(TAG, "Comment UI updated with loading text")
+            
+            // Get the content from our stored data
+            val content = scrapedData["content"] as? String ?: ""
+            val author = scrapedData["author"] as? String ?: "Author"
+            
+            val finalContent = if (content.isBlank()) {
+                Log.w(TAG, "No content available for comment generation, using test content")
+                "This is a sample LinkedIn post about the importance of continuous learning in technology."
+            } else {
+                content
+            }
+            
+            // Clean up the content exactly like Flutter's ApiService does
+            var cleanedContent = finalContent
+                .replace(Regex("\\n+"), " ") // Replace newlines with spaces
+                .replace(Regex("\\s+"), " ") // Replace multiple spaces with single space
+                .replace("…more", "") // Remove "…more" text
+                .trim()
+            
+            // Truncate to first 300 chars to avoid server errors (like Flutter does)
+            if (cleanedContent.length > 300) {
+                cleanedContent = cleanedContent.substring(0, 300) + "..."
+            }
+            
+            // Use exact prompt format from Flutter's ApiService.generateComment
+            val prompt = "Generate a $commentType tone comment for a LinkedIn post by $author: $cleanedContent"
+            
+            Log.d(TAG, "Generating comment with prompt length: ${prompt.length}")
+            Log.d(TAG, "Using prompt: $prompt")
+            
+            // Create JSON body matching Flutter's ApiService implementation exactly
+            val jsonBody = JSONObject().apply {
+                put("requestContext", JSONObject().put("httpMethod", "POST"))
+                put("prompt", prompt)
+                put("email", getUserEmail())
+            }.toString()
+            
+            // Make API call to exact same endpoint as Flutter app
+            makeApiCall("comment", jsonBody) { response ->
+                Handler(Looper.getMainLooper()).post {
+                    try {
+                        if (response != null) {
+                            var comment = response
+                            Log.d(TAG, "Comment response received: ${response.take(100)}...")
+                            
+                            // Parse response exactly like Flutter's ApiService does
+                            try {
+                                val responseJson = JSONObject(response)
+                                comment = if (responseJson.has("text")) {
+                                    responseJson.getString("text")
+                                } else if (responseJson.has("comment")) {
+                                    responseJson.getString("comment")
+                                } else if (responseJson.has("response")) {
+                                    responseJson.getString("response")
+                                } else {
+                                    responseJson.toString()
+                                }
+                            } catch (e: Exception) {
+                                // Response is likely plain text, use as-is (matching Flutter logic)
+                                Log.d(TAG, "Comment response is plain text, using directly")
+                                comment = response
+                            }
+                            
+                            // Clean up the response (remove surrounding quotes if present)
+                            val cleanedComment = if (comment?.startsWith("\"") == true && comment.endsWith("\"")) {
+                                comment.substring(1, comment.length - 1)
+                            } else {
+                                comment ?: "Unable to generate comment"
+                            }
+                            
+                            commentContent.text = cleanedComment
+                            
+                            // Show copy button when comment is generated
+                            val copyButton = contentViewComment.findViewById<Button>(R.id.copy_comment_button)
+                            copyButton?.visibility = View.VISIBLE
+                            
+                            Log.d(TAG, "Comment generated successfully: ${cleanedComment.take(50)}...")
+                        } else {
+                            // Use exact same fallback as Flutter app
+                            Log.w(TAG, "No response received, using Flutter fallback")
+                            commentContent.text = "This looks like an exciting opportunity in the tech space!"
+                            
+                            // Show copy button even for fallback
+                            val copyButton = contentViewComment.findViewById<Button>(R.id.copy_comment_button)
+                            copyButton?.visibility = View.VISIBLE
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error processing comment response", e)
+                        // Use Flutter's fallback for errors
+                        commentContent.text = "Great opportunity for developers interested in AI and software development!"
+                        
+                        // Show copy button even for error
+                        val copyButton = contentViewComment.findViewById<Button>(R.id.copy_comment_button)
+                        copyButton?.visibility = View.VISIBLE
+                    }
                 }
-                
-                val thoughtfulComment = when (commentTone) {
-                    "Professional" -> "From a professional standpoint, these insights align with industry best practices. I've observed similar patterns in my organization's implementation."
-                    "Casual" -> "Love this! Been trying something similar and it's definitely a game-changer. Anyone else seeing these kinds of results?"
-                    "Enthusiastic" -> "Wow! This is EXACTLY what our team needed! Can't wait to implement these amazing strategies right away! Thank you so much for sharing!"
-                    "Academic" -> "The methodological approach presented here correlates with recent findings in the literature. Further research might explore the causal mechanisms underlying these observations."
-                    else -> "While the insights are valuable, it's also important to consider the broader implications. The balance between efficiency and human factors remains an important consideration."
-                }
-                
-                // Log the generated comments instead of updating UI
-                Log.d("EinsteiniOverlay", "Generated professional comment: $professionalComment")
-                Log.d("EinsteiniOverlay", "Generated question comment: $questionComment")
-                Log.d("EinsteiniOverlay", "Generated thoughtful comment: $thoughtfulComment")
-                
-                // In a real implementation, we would update the UI elements with these comments
-            }, 1500)
+            }
+            
         } catch (e: Exception) {
-            Log.e("EinsteiniOverlay", "Error generating comment", e)
+            Log.e(TAG, "Error generating comment", e)
+            
+            // Try to find comment content to show error
+            var errorCommentContent: TextView? = null
+            if (::contentViewComment.isInitialized) {
+                errorCommentContent = contentViewComment.findViewById<TextView>(R.id.comment_content)
+            }
+            if (errorCommentContent == null && ::contentViewLinkedIn.isInitialized) {
+                errorCommentContent = contentViewLinkedIn.findViewById<TextView>(R.id.comment_content)
+            }
+            if (errorCommentContent == null && ::overlayView.isInitialized) {
+                errorCommentContent = overlayView.findViewById<TextView>(R.id.comment_content)
+            }
+            // Use exact same fallback as Flutter app
+            errorCommentContent?.text = "Great opportunity for developers interested in AI and software development!"
+            
+            // Show copy button even for error fallback
+            val copyButton = contentViewComment.findViewById<Button>(R.id.copy_comment_button)
+            copyButton?.visibility = View.VISIBLE
         }
     }
     
@@ -1286,69 +1576,27 @@ class EinsteiniOverlayService : Service() {
                     // Get the main overlay container
                     val overlayContainer = overlayView.findViewById<LinearLayout>(R.id.overlay_container)
                     
-                    // Set main background with dotted borders
+                    // Set main background with simple design
                     if (isDark) {
-                        overlayContainer?.setBackgroundResource(R.drawable.overlay_rounded_background_dark_bordered)
+                        overlayContainer?.setBackgroundResource(R.drawable.overlay_background_dark)
                     } else {
-                        overlayContainer?.setBackgroundResource(R.drawable.overlay_rounded_background_bordered)
+                        overlayContainer?.setBackgroundResource(R.drawable.overlay_background_light)
                     }
                     
-                    // Update tab buttons
-                    val tabSummarize = overlayView.findViewById<Button>(R.id.tab_summarize)
-                    val tabTranslate = overlayView.findViewById<Button>(R.id.tab_translate)
-                    val tabComment = overlayView.findViewById<Button>(R.id.tab_comment)
+                    // Update tab navigation themes
+                    updateTabNavigationTheme()
                     
-                    // Get the active tab color and inactive tab color
-                    val activeTabColor = Color.parseColor("#BD79FF")
-                    val inactiveTabColor = if (isDark) 
-                        Color.parseColor("#B4B7BD")
-                    else 
-                        Color.parseColor("#6C727F")
-                    
-                    // Update button background colors
-                    val tabButtons = overlayView.findViewById<LinearLayout>(R.id.tabButtons)
-                    tabButtons.setBackgroundColor(if (isDark) Color.parseColor("#121827") else Color.WHITE)
-                    
-                    // Update tab text colors based on current selection
-                    // We'll determine which tab is active by checking text colors
-                    if (tabSummarize.currentTextColor == Color.parseColor("#BD79FF")) {
-                        tabSummarize.setTextColor(activeTabColor)
-                        tabTranslate.setTextColor(inactiveTabColor)
-                        tabComment.setTextColor(inactiveTabColor)
-                    } else if (tabTranslate.currentTextColor == Color.parseColor("#BD79FF")) {
-                        tabSummarize.setTextColor(inactiveTabColor)
-                        tabTranslate.setTextColor(activeTabColor)
-                        tabComment.setTextColor(inactiveTabColor)
-                    } else if (tabComment.currentTextColor == Color.parseColor("#BD79FF")) {
-                        tabSummarize.setTextColor(inactiveTabColor)
-                        tabTranslate.setTextColor(inactiveTabColor)
-                        tabComment.setTextColor(activeTabColor)
-                    } else {
-                        // Default to first tab if none is active
-                        tabSummarize.setTextColor(activeTabColor)
-                        tabTranslate.setTextColor(inactiveTabColor)
-                        tabComment.setTextColor(inactiveTabColor)
-                    }
+                    // Update content area text colors based on theme
+                    updateContentThemeColors(isDark)
                     
                     // Update divider color
                     val divider = overlayView.findViewById<View>(R.id.divider)
-                    divider?.setBackgroundColor(Color.parseColor(if (isDark) "#1A2235" else "#EEEEEE"))
+                    divider?.setBackgroundColor(
+                        if (isDark) Color.parseColor("#333333") else Color.parseColor("#E0E0E0")
+                    )
                     
-                    // Update content section - we only update LinkedIn content view since the others are created dynamically
-                    updateContentSectionTheme(R.id.contentViewLinkedIn)
-                    
-                    // Update the dynamic views if they're initialized
-                    if (::contentViewTwitter.isInitialized) {
-                        updateDynamicContentTheme(contentViewTwitter)
-                    }
-                    
-                    if (::contentViewComment.isInitialized) {
-                        updateDynamicContentTheme(contentViewComment)
-                    }
-                    
-                    Log.d(TAG, "Overlay theme updated successfully")
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error updating overlay theme elements", e)
+                    Log.e(TAG, "Error updating overlay theme UI elements", e)
                 }
             }
         } catch (e: Exception) {
@@ -1356,6 +1604,67 @@ class EinsteiniOverlayService : Service() {
         }
     }
     
+    private fun updateContentThemeColors(isDark: Boolean) {
+        // Update content area colors
+        if (::contentViewLinkedIn.isInitialized) {
+            updateViewThemeColors(contentViewLinkedIn, isDark)
+        }
+        if (::contentViewTwitter.isInitialized) {
+            updateViewThemeColors(contentViewTwitter, isDark)
+        }
+        if (::contentViewComment.isInitialized) {
+            updateViewThemeColors(contentViewComment, isDark)
+        }
+        
+        // Update generated content container
+        val contentContainer = overlayView.findViewById<LinearLayout>(R.id.content_container)
+        contentContainer?.setBackgroundColor(
+            if (isDark) Color.parseColor("#1A1F2E") else Color.parseColor("#F8F8F8")
+        )
+    }
+    
+    private fun updateViewThemeColors(view: LinearLayout, isDark: Boolean) {
+        // Update all child views recursively
+        for (i in 0 until view.childCount) {
+            val child = view.getChildAt(i)
+            when (child) {
+                is LinearLayout -> {
+                    // Update background for content blocks
+                    child.setBackgroundColor(
+                        if (isDark) Color.parseColor("#1A1F2E") else Color.parseColor("#F8F8F8")
+                    )
+                    updateViewThemeColors(child, isDark)
+                }
+                is TextView -> {
+                    // Update text colors - headers vs body text
+                    if (child.textSize >= 18f) {
+                        // Header text
+                        child.setTextColor(
+                            if (isDark) Color.WHITE else Color.parseColor("#1A1A1A")
+                        )
+                    } else {
+                        // Body text
+                        child.setTextColor(
+                            if (isDark) Color.parseColor("#CCCCCC") else Color.parseColor("#666666")
+                        )
+                    }
+                }
+                is Button -> {
+                    // Update button background
+                    child.setBackgroundColor(
+                        if (isDark) Color.parseColor("#007AFF") else Color.parseColor("#007AFF")
+                    )
+                }
+                is Spinner -> {
+                    // Update spinner background
+                    child.setBackgroundResource(
+                        if (isDark) R.drawable.dropdown_background_dark else R.drawable.dropdown_background_light
+                    )
+                }
+            }
+        }
+    }
+
     // Update a specific content section with theme colors
     private fun updateContentSectionTheme(contentViewId: Int) {
         if (!::overlayView.isInitialized) return
@@ -1368,7 +1677,7 @@ class EinsteiniOverlayService : Service() {
             val child = contentView.getChildAt(i)
             if (child is LinearLayout) {
                 // This is a content block 
-                child.setBackgroundColor(Color.parseColor(if (isDark) "#1A2235" else "#F5F5F5"))
+                child.setBackgroundColor(Color.parseColor(if (isDark) "#1A1F2E" else "#F5F5F5"))
                 
                 // Update text colors within this block
                 for (j in 0 until child.childCount) {
@@ -1396,7 +1705,7 @@ class EinsteiniOverlayService : Service() {
             val child = contentView.getChildAt(i)
             if (child is LinearLayout) {
                 // This is a content block 
-                child.setBackgroundColor(Color.parseColor(if (isDark) "#1A2235" else "#F5F5F5"))
+                child.setBackgroundColor(Color.parseColor(if (isDark) "#1A1F2E" else "#F5F5F5"))
                 
                 // Update text colors within this block
                 for (j in 0 until child.childCount) {
@@ -1432,10 +1741,7 @@ class EinsteiniOverlayService : Service() {
         Log.d("EinsteiniOverlay", "Toggling overlay visibility. Current state: isOverlayVisible=$isOverlayVisible")
         
         if (!isOverlayVisible) {
-            // Hide bubble first
-            removeBubbleIfExists()
-            
-            // Then show overlay
+            // Show overlay (keep bubble visible)
             showOverlayWindow()
         } else {
             // Hide overlay (which will show bubble)
@@ -1447,8 +1753,7 @@ class EinsteiniOverlayService : Service() {
         if (isOverlayVisible) return
         
         try {
-            // Hide bubble first
-            removeBubbleIfExists()
+            // Keep bubble visible while showing overlay
             
             // Make sure overlay view is initialized
             if (!::overlayView.isInitialized) {
@@ -1472,7 +1777,9 @@ class EinsteiniOverlayService : Service() {
             
             // Calculate initial height (full screen for the container with the overlay at the bottom)
             val screenHeight = resources.displayMetrics.heightPixels
-            val overlayHeight = (screenHeight * 0.4).toInt()
+            val minHeight = 650 // Increased minimum height to ensure content isn't chopped
+            val calculatedHeight = (screenHeight * 0.45).toInt()  // Reduced to 45% to leave more space at bottom
+            val overlayHeight = maxOf(calculatedHeight, minHeight)
             
             // Position the overlay to fill the entire screen
             if (overlayParams == null) {
@@ -1540,9 +1847,9 @@ class EinsteiniOverlayService : Service() {
                 overlayView.visibility = View.VISIBLE
                 isOverlayVisible = true
                 
-                // Hide the bubble while overlay is visible
+                // Keep the bubble visible even when overlay is shown
                 if (::bubbleView.isInitialized) {
-                    bubbleView.visibility = View.GONE
+                    bubbleView.visibility = View.VISIBLE
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to add overlay view to window", e)
@@ -1589,10 +1896,8 @@ class EinsteiniOverlayService : Service() {
                         
                         isOverlayVisible = false
                         
-                        // Show the bubble with a delay to ensure clean transition
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            showBubble()
-                        }, 200)
+                        // Bubble should already be visible, no need to show it again
+                        Log.d("EinsteiniOverlay", "Overlay hidden, bubble remains visible")
                     } catch (e: Exception) {
                         Log.e("EinsteiniOverlay", "Error hiding overlay after animation", e)
                         
@@ -1607,7 +1912,8 @@ class EinsteiniOverlayService : Service() {
                             }
                             
                             isOverlayVisible = false
-                            showBubble()
+                            // Bubble should already be visible
+                            Log.d("EinsteiniOverlay", "Overlay hidden (fallback), bubble remains visible")
                         } catch (e2: Exception) {
                             Log.e("EinsteiniOverlay", "Error in fallback overlay removal", e2)
                         }
@@ -1628,7 +1934,8 @@ class EinsteiniOverlayService : Service() {
                 }
                 
                 isOverlayVisible = false
-                showBubble()
+                // Bubble should already be visible
+                Log.d("EinsteiniOverlay", "Overlay hidden (direct fallback), bubble remains visible")
             } catch (e2: Exception) {
                 Log.e("EinsteiniOverlay", "Error in fallback overlay removal", e2)
             }
@@ -1855,12 +2162,17 @@ class EinsteiniOverlayService : Service() {
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT
             )
             
             closeButtonParams?.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
             closeButtonParams?.y = 100
+            
+            // Set up click listener for close button
+            closeButtonView.setOnClickListener {
+                hideOverlay()
+            }
             
             closeButtonView.visibility = View.GONE
             try {
@@ -1932,6 +2244,29 @@ class EinsteiniOverlayService : Service() {
     // Check if the app should be in dark mode based on theme preference
     private fun isDarkMode(): Boolean {
         return isDarkTheme
+    }
+
+    // Get initial theme from shared preferences
+    private fun getInitialThemeFromPreferences(): Boolean {
+        return try {
+            val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            // Check for the current theme mode first
+            val themeMode = prefs.getString("flutter.theme_mode", "system") ?: "system"
+            
+            when (themeMode) {
+                "dark" -> true
+                "light" -> false
+                "system" -> {
+                    // Check system dark mode setting
+                    val configuration = resources.configuration
+                    (configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+                }
+                else -> false // Default to light mode
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting initial theme from preferences", e)
+            false // Default to light mode on error
+        }
     }
 
     // Register for theme changes from Flutter only, NOT from system
@@ -2156,13 +2491,14 @@ class EinsteiniOverlayService : Service() {
         }
     }
     
-    // Scrape LinkedIn post using the backend API
+    // Scrape LinkedIn post using the backend API (matches Flutter implementation)
     private fun scrapeLinkedInPost(url: String): Map<String, Any> {
         try {
             Log.d("EinsteiniOverlay", "Scraping LinkedIn URL: $url")
             
-            // Create the API URL
-            val apiUrl = "https://backend.einsteini.ai/scrape?url=${Uri.encode(url)}"
+            // Use the exact same endpoint and format as the Flutter app
+            val encodedUrl = java.net.URLEncoder.encode(url, "UTF-8")
+            val apiUrl = "https://backend.einsteini.ai/scrape?url=$encodedUrl"
             
             // Make the HTTP request
             val connection = URL(apiUrl).openConnection() as HttpURLConnection
@@ -2186,51 +2522,103 @@ class EinsteiniOverlayService : Service() {
                 }
                 
                 reader.close()
-                Log.d("EinsteiniOverlay", "Scrape response: ${response.substring(0, Math.min(100, response.length))}...")
+                val responseBody = response.toString()
+                Log.d("EinsteiniOverlay", "Scrape response: ${responseBody.take(100)}...")
                 
-                // Parse the JSON response
-                val jsonResponse = JSONObject(response.toString())
+                // Process the scraped data similar to Flutter implementation
+                var content = ""
+                var author = "Unknown author"
+                var date = "Unknown date"
+                var likes = 0
+                var comments = 0
+                val images = mutableListOf<String>()
+                val commentsList = mutableListOf<Map<String, String>>()
                 
-                // Extract the data
-                val result = mutableMapOf<String, Any>()
-                
-                // Handle both string and object responses
-                if (jsonResponse.has("content")) {
-                    result["content"] = jsonResponse.getString("content")
-                } else {
-                    result["content"] = response.toString()
+                try {
+                    // Try to parse as JSON first
+                    val jsonResponse = JSONObject(responseBody)
+                    
+                    if (jsonResponse.has("content")) {
+                        content = cleanContent(jsonResponse.getString("content"))
+                        author = jsonResponse.optString("author", "Unknown author")
+                        date = jsonResponse.optString("date", "Unknown date")
+                        likes = jsonResponse.optInt("likes", 0)
+                        comments = jsonResponse.optInt("comments", 0)
+                        
+                        // Process images if available
+                        if (jsonResponse.has("images")) {
+                            val imagesArray = jsonResponse.getJSONArray("images")
+                            for (i in 0 until imagesArray.length()) {
+                                images.add(imagesArray.getString(i))
+                            }
+                        }
+                    } else {
+                        // Treat the whole response as content - no custom extraction
+                        content = cleanContent(responseBody)
+                        author = "Unknown author"
+                        date = "Unknown date"
+                        likes = 0
+                        comments = 0
+                    }
+                } catch (e: Exception) {
+                    // If JSON parsing fails, treat as string content - no custom extraction
+                    content = cleanContent(responseBody)
+                    author = "Unknown author"
+                    date = "Unknown date"
+                    likes = 0
+                    comments = 0
                 }
                 
-                // Extract other fields if available
-                if (jsonResponse.has("author")) {
-                    result["author"] = jsonResponse.getString("author")
-                } else {
-                    result["author"] = "Unknown author"
-                }
-                
-                if (jsonResponse.has("date")) {
-                    result["date"] = jsonResponse.getString("date")
-                } else {
-                    result["date"] = "Unknown date"
-                }
-                
-                return result
+                return mapOf(
+                    "content" to content,
+                    "author" to author,
+                    "date" to date,
+                    "likes" to likes,
+                    "comments" to comments,
+                    "images" to images,
+                    "commentsList" to commentsList,
+                    "url" to url
+                )
             } else {
                 Log.e("EinsteiniOverlay", "Error scraping LinkedIn post: $responseCode")
+                val errorReader = BufferedReader(InputStreamReader(connection.errorStream ?: connection.inputStream))
+                val errorResponse = errorReader.readText()
+                errorReader.close()
+                Log.e("EinsteiniOverlay", "Error response: $errorResponse")
+                
                 return mapOf(
-                    "content" to "Error: Failed to scrape LinkedIn post (HTTP $responseCode)",
+                    "content" to "Error: $responseCode - Failed to scrape LinkedIn post",
                     "author" to "Error",
-                    "date" to "Unknown date"
+                    "date" to "Unknown date",
+                    "likes" to 0,
+                    "comments" to 0,
+                    "images" to emptyList<String>(),
+                    "commentsList" to emptyList<Map<String, String>>(),
+                    "url" to url
                 )
             }
         } catch (e: Exception) {
             Log.e("EinsteiniOverlay", "Exception while scraping LinkedIn post", e)
             return mapOf(
-                "content" to "Error: ${e.message}",
+                "content" to "Error: Network or server issue - ${e.message}",
                 "author" to "Error",
-                "date" to "Unknown date"
+                "date" to "Unknown date",
+                "likes" to 0,
+                "comments" to 0,
+                "images" to emptyList<String>(),
+                "commentsList" to emptyList<Map<String, String>>(),
+                "url" to url
             )
         }
+    }
+    
+    // Helper methods to clean and extract data from content (similar to Flutter implementation)
+    private fun cleanContent(content: String): String {
+        return content
+            .replace(Regex("\\n+"), " ")
+            .replace(Regex("\\s+"), " ")
+            .replace("…more", "")
+            .trim()
     }
     
     // Update the overlay with the scraped data
@@ -2244,8 +2632,7 @@ class EinsteiniOverlayService : Service() {
             // Get the LinkedIn content view
             val contentViewLinkedIn = overlayView.findViewById<LinearLayout>(R.id.contentViewLinkedIn)
             
-            // Select the first tab by updating tabs
-            updateTabs(0)
+            // Don't change the active tab - just populate the content
             
             // Show the LinkedIn content view
             contentViewLinkedIn.visibility = View.VISIBLE
@@ -2397,7 +2784,7 @@ class EinsteiniOverlayService : Service() {
         )
         cardView.cardElevation = 4.dpToPx().toFloat()
         cardView.radius = 16.dpToPx().toFloat()
-        cardView.setCardBackgroundColor(Color.parseColor(if (isDarkTheme) "#1A2235" else "#F5F5F5"))
+        cardView.setCardBackgroundColor(Color.parseColor(if (isDarkTheme) "#1A1F2E" else "#F5F5F5"))
         
         // Create card content layout
         val cardContent = LinearLayout(this)
@@ -2619,50 +3006,103 @@ class EinsteiniOverlayService : Service() {
                 view.text.toString().lowercase().contains("results") ||
                 view.text.toString().lowercase().contains("translation") ||
                 view.text.toString().lowercase().contains("original") ||
-                view.text.toString().lowercase().contains("comment")) {
-                // Apply title font
+                view.text.toString().lowercase().contains("comment") ||
+                view.text.toString().lowercase().contains("customize")) {
+                // Apply title font (TikTok Sans)
                 view.typeface = titleFont
-                view.setTextColor(Color.parseColor("#BD79FF"))
+                view.setTextColor(
+                    if (isDarkTheme) Color.WHITE else Color.parseColor("#1A1A1A")
+                )
             } else {
-                // Apply body font
+                // Apply body font (DM Sans)
                 view.typeface = bodyFont
-                view.setTextColor(Color.WHITE)
+                view.setTextColor(
+                    if (isDarkTheme) Color.parseColor("#CCCCCC") else Color.parseColor("#666666")
+                )
             }
         }
     }
 
+    private fun updateTabNavigationTheme() {
+        // Update tab navigation styles based on current theme
+        if (!::overlayView.isInitialized) return
+        
+        val tabSummarize = overlayView.findViewById<TextView>(R.id.tab_summarize)
+        val tabTranslate = overlayView.findViewById<TextView>(R.id.tab_translate)
+        val tabComment = overlayView.findViewById<TextView>(R.id.tab_comment)
+        
+        // Set inactive style for non-active tabs
+        tabSummarize?.setBackgroundResource(R.drawable.tab_button_inactive)
+        tabSummarize?.setTextColor(Color.parseColor("#CCCCCC"))
+        
+        tabTranslate?.setBackgroundResource(R.drawable.tab_button_inactive)
+        tabTranslate?.setTextColor(Color.parseColor("#CCCCCC"))
+        
+        // Set Comment as active (since it's the default tab)
+        tabComment?.setBackgroundResource(R.drawable.tab_button_active)
+        tabComment?.setTextColor(Color.parseColor("#FFFFFF"))
+        tabComment?.setTypeface(tabComment.typeface, android.graphics.Typeface.BOLD)
+    }
+
     private fun updateTabs(activeTabIndex: Int) {
-        // Update tab button styles based on the active tab
-        val tabSummarize = overlayView.findViewById<Button>(R.id.tab_summarize)
-        val tabTranslate = overlayView.findViewById<Button>(R.id.tab_translate)
-        val tabComment = overlayView.findViewById<Button>(R.id.tab_comment)
+        Log.d("EinsteiniOverlay", "updateTabs called with activeTabIndex: $activeTabIndex")
+        
+        // Update tab navigation styles with button appearance
+        val tabSummarize = overlayView.findViewById<TextView>(R.id.tab_summarize)
+        val tabTranslate = overlayView.findViewById<TextView>(R.id.tab_translate)
+        val tabComment = overlayView.findViewById<TextView>(R.id.tab_comment)
+        
+        if (tabSummarize == null) Log.e("EinsteiniOverlay", "tabSummarize is null!")
+        if (tabTranslate == null) Log.e("EinsteiniOverlay", "tabTranslate is null!")
+        if (tabComment == null) Log.e("EinsteiniOverlay", "tabComment is null!")
         
         // Reset all tabs to inactive style
-        tabSummarize.setBackgroundResource(R.drawable.tab_button_unselected)
-        tabSummarize.setTextColor(Color.parseColor("#9AA1B1"))
-        tabTranslate.setBackgroundResource(R.drawable.tab_button_unselected)
-        tabTranslate.setTextColor(Color.parseColor("#9AA1B1"))
-        tabComment.setBackgroundResource(R.drawable.tab_button_unselected)
-        tabComment.setTextColor(Color.parseColor("#9AA1B1"))
+        val inactiveColor = Color.parseColor("#CCCCCC")
+        val activeColor = Color.parseColor("#FFFFFF")
+        
+        tabSummarize?.setTextColor(inactiveColor)
+        tabSummarize?.setBackgroundResource(R.drawable.tab_button_inactive)
+        tabSummarize?.setTypeface(tabSummarize.typeface, android.graphics.Typeface.NORMAL)
+        
+        tabTranslate?.setTextColor(inactiveColor)
+        tabTranslate?.setBackgroundResource(R.drawable.tab_button_inactive)
+        tabTranslate?.setTypeface(tabTranslate.typeface, android.graphics.Typeface.NORMAL)
+        
+        tabComment?.setTextColor(inactiveColor)
+        tabComment?.setBackgroundResource(R.drawable.tab_button_inactive)
+        tabComment?.setTypeface(tabComment.typeface, android.graphics.Typeface.NORMAL)
         
         // Set active tab style with animation
-        when (activeTabIndex) {
+        val activeTab = when (activeTabIndex) {
             0 -> {
-                tabSummarize.setBackgroundResource(R.drawable.tab_button_selected)
-                tabSummarize.setTextColor(Color.WHITE)
-                animateTabSelection(tabSummarize)
+                Log.d("EinsteiniOverlay", "Setting comment tab as active")
+                tabComment?.setTextColor(activeColor)
+                tabComment?.setBackgroundResource(R.drawable.tab_button_active)
+                tabComment?.setTypeface(tabComment.typeface, android.graphics.Typeface.BOLD)
+                tabComment
             }
             1 -> {
-                tabTranslate.setBackgroundResource(R.drawable.tab_button_selected)
-                tabTranslate.setTextColor(Color.WHITE)
-                animateTabSelection(tabTranslate)
+                Log.d("EinsteiniOverlay", "Setting translate tab as active")
+                tabTranslate?.setTextColor(activeColor)
+                tabTranslate?.setBackgroundResource(R.drawable.tab_button_active)
+                tabTranslate?.setTypeface(tabTranslate.typeface, android.graphics.Typeface.BOLD)
+                tabTranslate
             }
             2 -> {
-                tabComment.setBackgroundResource(R.drawable.tab_button_selected)
-                tabComment.setTextColor(Color.WHITE)
-                animateTabSelection(tabComment)
+                Log.d("EinsteiniOverlay", "Setting summarize tab as active")
+                tabSummarize?.setTextColor(activeColor)
+                tabSummarize?.setBackgroundResource(R.drawable.tab_button_active)
+                tabSummarize?.setTypeface(tabSummarize.typeface, android.graphics.Typeface.BOLD)
+                tabSummarize
+            }
+            else -> {
+                Log.w("EinsteiniOverlay", "Unknown activeTabIndex: $activeTabIndex")
+                null
             }
         }
+        
+        // Animate active tab
+        activeTab?.let { animateTabSelection(it) }
         
         // Get all content views
         val contentViews = listOf(
@@ -2674,9 +3114,14 @@ class EinsteiniOverlayService : Service() {
         // Get the current visible view and target view
         val currentVisibleView = contentViews.firstOrNull { it.visibility == View.VISIBLE }
         val targetView = when (activeTabIndex) {
-            0 -> contentViewLinkedIn
+            0 -> if (::contentViewComment.isInitialized) contentViewComment else null
             1 -> if (::contentViewTwitter.isInitialized) contentViewTwitter else null
-            2 -> if (::contentViewComment.isInitialized) contentViewComment else null
+            2 -> {
+                // Always ensure summarize content is populated when switching to summarize tab
+                Log.d("EinsteiniOverlay", "Switching to summarize tab, ensuring content is populated")
+                ensureSummarizeContentPopulated()
+                contentViewLinkedIn
+            }
             else -> null
         }
         
@@ -2693,18 +3138,78 @@ class EinsteiniOverlayService : Service() {
         overlayView.findViewById<NestedScrollView>(R.id.contentScrollView)?.scrollTo(0, 0)
     }
     
-    // Animate tab button selection
-    private fun animateTabSelection(tab: Button) {
-        tab.scaleX = 0.9f
-        tab.scaleY = 0.9f
-        tab.alpha = 0.7f
+    // Ensure summarize content is populated when switching to summarize tab
+    private fun ensureSummarizeContentPopulated() {
+        if (!::contentViewLinkedIn.isInitialized) {
+            Log.d("EinsteiniOverlay", "contentViewLinkedIn not initialized")
+            return
+        }
+        
+        if (scrapedData.isEmpty()) {
+            Log.d("EinsteiniOverlay", "scrapedData is empty, cannot populate")
+            return
+        }
+        
+        try {
+            Log.d("EinsteiniOverlay", "Checking if summarize content needs population...")
+            
+            // Get the content blocks
+            val contentBlocks = contentViewLinkedIn.children.filterIsInstance<LinearLayout>().toList()
+            Log.d("EinsteiniOverlay", "Found ${contentBlocks.size} content blocks")
+            
+            // Check if content is empty or needs to be populated
+            var needsPopulation = false
+            
+            if (contentBlocks.isEmpty()) {
+                Log.d("EinsteiniOverlay", "No content blocks found, needs population")
+                needsPopulation = true
+            } else {
+                // Check if the first block (summary) has meaningful content
+                val summaryBlock = contentBlocks[0]
+                val contentTextView = summaryBlock.findViewById<TextView>(R.id.block_content)
+                
+                if (contentTextView == null) {
+                    Log.d("EinsteiniOverlay", "Content TextView not found, needs population")
+                    needsPopulation = true
+                } else {
+                    val currentText = contentTextView.text?.toString() ?: ""
+                    Log.d("EinsteiniOverlay", "Current content text: '$currentText'")
+                    
+                    if (currentText.isEmpty() || 
+                        currentText == "No content found" ||
+                        currentText.contains("Click") ||
+                        currentText.contains("Tap") ||
+                        currentText.length < 10) { // Assume real content should be longer
+                        Log.d("EinsteiniOverlay", "Content is empty or placeholder, needs population")
+                        needsPopulation = true
+                    }
+                }
+            }
+            
+            if (needsPopulation) {
+                Log.d("EinsteiniOverlay", "Populating summarize content with scraped data")
+                updateOverlayWithScrapedData(scrapedData)
+            } else {
+                Log.d("EinsteiniOverlay", "Summarize content already populated")
+            }
+            
+        } catch (e: Exception) {
+            Log.e("EinsteiniOverlay", "Error ensuring summarize content populated", e)
+        }
+    }
+
+    // Animate tab selection with a subtle scale effect
+    private fun animateTabSelection(tab: TextView) {
+        tab.scaleX = 0.95f
+        tab.scaleY = 0.95f
+        tab.alpha = 0.8f
         
         tab.animate()
             .scaleX(1f)
             .scaleY(1f)
             .alpha(1f)
-            .setDuration(250)
-            .setInterpolator(android.view.animation.OvershootInterpolator(1.2f))
+            .setDuration(200)
+            .setInterpolator(android.view.animation.OvershootInterpolator(1.1f))
             .start()
     }
     
@@ -2736,5 +3241,50 @@ class EinsteiniOverlayService : Service() {
                 .setInterpolator(android.view.animation.DecelerateInterpolator())
                 .start()
         }, 100)
+    }
+    
+    // Fallback translation when method channel is not available
+    private fun generateFallbackTranslation(content: String, language: String): String {
+        if (content.isBlank()) return "No content available to translate."
+        
+        return when (language.lowercase()) {
+            "spanish", "español" -> "🇪🇸 [Traducción simulada] Este contenido ha sido traducido al español usando el sistema local."
+            "french", "français" -> "🇫🇷 [Traduction simulée] Ce contenu a été traduit en français en utilisant le système local."
+            "german", "deutsch" -> "🇩🇪 [Simulierte Übersetzung] Dieser Inhalt wurde mit dem lokalen System ins Deutsche übersetzt."
+            "italian", "italiano" -> "🇮🇹 [Traduzione simulata] Questo contenuto è stato tradotto in italiano utilizzando il sistema locale."
+            "portuguese", "português" -> "🇵🇹 [Tradução simulada] Este conteúdo foi traduzido para português usando o sistema local."
+            "chinese", "中文" -> "🇨🇳 [模拟翻译] 此内容已使用本地系统翻译为中文。"
+            "japanese", "日本語" -> "🇯🇵 [シミュレーション翻訳] このコンテンツはローカルシステムを使用して日本語に翻訳されました。"
+            "korean", "한국어" -> "🇰🇷 [시뮬레이션 번역] 이 콘텐츠는 로컬 시스템을 사용하여 한국어로 번역되었습니다."
+            else -> "🌐 [Simulated Translation to $language] This content has been translated using the local system. Note: This is a fallback translation. For accurate translations, please use the main app with internet connection."
+        }
+    }
+    
+    // Fallback summary generation when method channel is not available
+    private fun generateFallbackSummary(content: String, summaryType: String): String {
+        if (content.isBlank()) return "No content available to summarize."
+        
+        val sentences = content.split(Regex("[.!?]+")).filter { it.trim().isNotEmpty() }
+        
+        return when (summaryType.lowercase()) {
+            "brief" -> {
+                if (sentences.isNotEmpty()) {
+                    "📄 ${sentences.first().trim()}..."
+                } else {
+                    "📄 Brief summary of the content."
+                }
+            }
+            "detailed" -> {
+                val firstSentences = sentences.take(3).joinToString(". ") { it.trim() }
+                "📋 $firstSentences${if (sentences.size > 3) "..." else "."}"
+            }
+            "concise" -> {
+                val words = content.split("\\s+".toRegex()).take(25)
+                "⚡ ${words.joinToString(" ")}${if (content.split("\\s+".toRegex()).size > 25) "..." else ""}"
+            }
+            else -> {
+                "📖 ${sentences.take(2).joinToString(". ") { it.trim() }}${if (sentences.size > 2) "..." else "."}"
+            }
+        }
     }
 } 

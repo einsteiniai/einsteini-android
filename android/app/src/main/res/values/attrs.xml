@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Bubble attributes -->
+    <declare-styleable name="BubbleView">
+        <attr name="bubbleSize" format="dimension" />
+        <attr name="bubbleIcon" format="reference" />
+        <attr name="bubbleBackgroundColor" format="color" />
+        <attr name="bubbleElevation" format="dimension" />
+    </declare-styleable>
+
+    <!-- Overlay attributes -->
+    <declare-styleable name="OverlayWindow">
+        <attr name="overlayBackgroundColor" format="color" />
+        <attr name="overlayCornerRadius" format="dimension" />
+        <attr name="overlayElevation" format="dimension" />
+        <attr name="overlayMaxWidth" format="dimension" />
+        <attr name="overlayMaxHeight" format="dimension" />
+    </declare-styleable>
+
+    <!-- Content attributes -->
+    <declare-styleable name="ContentView">
+        <attr name="contentPadding" format="dimension" />
+        <attr name="contentTextColor" format="color" />
+        <attr name="contentTitleTextColor" format="color" />
+        <attr name="contentBackgroundColor" format="color" />
+    </declare-styleable>
+
+    <!-- Theme attributes -->
+    <declare-styleable name="EinsteiniTheme">
+        <attr name="isDarkTheme" format="boolean" />
+        <attr name="primaryColor" format="color" />
+        <attr name="surfaceColor" format="color" />
+        <attr name="onSurfaceColor" format="color" />
+    </declare-styleable>
+</resources>

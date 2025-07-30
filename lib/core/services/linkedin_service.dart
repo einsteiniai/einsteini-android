@@ -117,30 +117,12 @@ class LinkedInService {
     String? buttonType,
     String? existingComment,
   }) async {
-    final Map<String, dynamic> requestData = {
-      'text': postContent,
-      'author': author,
-      'tone': tone,
-      'tone_details': toneDetails,
-    };
-    
-    if (imageUrl != null) {
-      requestData['img_url'] = imageUrl;
-    }
-    
-    if (buttonType != null) {
-      requestData['btntype'] = buttonType;
-    }
-    
-    if (existingComment != null && buttonType == 'moreinfo') {
-      requestData['comment'] = existingComment;
-    }
-    
-    // For now we reuse the comment API
-    return await _apiService.generateComment(
+    // Use the dedicated personalized comment API method
+    return await _apiService.generatePersonalizedComment(
       postContent: postContent,
       author: author,
-      commentType: 'personalized',
+      tone: tone,
+      toneDetails: toneDetails,
       imageUrl: imageUrl,
     );
   }

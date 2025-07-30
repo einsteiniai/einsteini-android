@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:einsteiniapp/core/constants/app_constants.dart';
-import 'package:einsteiniapp/core/routes/app_router.dart';
 import 'package:einsteiniapp/core/widgets/custom_app_bar.dart';
-import 'package:einsteiniapp/core/utils/toast_utils.dart';
+import 'package:einsteiniapp/core/services/subscription_service.dart';
+import 'package:einsteiniapp/core/services/history_service.dart';
+import 'package:einsteiniapp/core/models/subscription_model.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -15,73 +14,39 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _jobTitleController = TextEditingController();
-  final _companyController = TextEditingController();
-  final _bioController = TextEditingController();
-  final _linkedInController = TextEditingController();
-  final _twitterController = TextEditingController();
-  bool _isLoading = false;
-  bool _isEditing = false;
+  String _userName = '';
+  String _userEmail = '';
+  SubscriptionModel? _subscription;
+  List<AnalyzedPost> _recentHistory = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _loadProfileData();
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _jobTitleController.dispose();
-    _companyController.dispose();
-    _bioController.dispose();
-    _linkedInController.dispose();
-    _twitterController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _nameController.text = prefs.getString('user_name') ?? 'LinkedIn User';
-      _jobTitleController.text = prefs.getString('user_job_title') ?? 'LinkedIn Professional';
-      _companyController.text = prefs.getString('user_company') ?? 'Company';
-      _bioController.text = prefs.getString('user_bio') ?? 'I use einsteini.ai to create engaging LinkedIn content that helps me grow my professional network.';
-      _linkedInController.text = prefs.getString('user_linkedin') ?? 'linkedin.com/in/username';
-      _twitterController.text = prefs.getString('user_twitter') ?? '@username';
-    });
-  }
-
-  Future<void> _saveUserData() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
+  Future<void> _loadProfileData() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
+      // Load user data
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('user_name', _nameController.text);
-      await prefs.setString('user_job_title', _jobTitleController.text);
-      await prefs.setString('user_company', _companyController.text);
-      await prefs.setString('user_bio', _bioController.text);
-      await prefs.setString('user_linkedin', _linkedInController.text);
-      await prefs.setString('user_twitter', _twitterController.text);
+      _userName = prefs.getString('user_name') ?? 'User';
+      _userEmail = prefs.getString('user_email') ?? 'user@example.com';
 
-      if (mounted) {
-        ToastUtils.showSuccessToast('Profile updated successfully');
-        setState(() {
-          _isEditing = false;
-        });
-      }
+      // Load subscription data
+      final subscriptionService = SubscriptionService();
+      _subscription = await subscriptionService.fetchSubscriptionInfo();
+
+      // Load recent history (last 5 items)
+      final allHistory = await HistoryService.getAllPosts();
+      _recentHistory = allHistory.take(5).toList();
+
     } catch (e) {
-      if (mounted) {
-        ToastUtils.showErrorToast('Error saving profile: $e');
-      }
+      print('Error loading profile data: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -93,281 +58,155 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final logoImage = isDarkMode ? 'assets/images/einsteini_white.png' : 'assets/images/einsteini_black.png';
-
     return Scaffold(
-      appBar: CustomAppBar(
+      appBar: const CustomAppBar(
         title: 'Profile',
         showBackButton: true,
         showDrawerButton: false,
         centerTitle: false,
-        actions: [
-          IconButton(
-            icon: Icon(_isEditing ? Icons.close : Icons.edit),
-            onPressed: () {
-              setState(() {
-                _isEditing = !_isEditing;
-                if (!_isEditing) {
-                  // Reload data if canceling edit
-                  _loadUserData();
-                }
-              });
-            },
-          ),
-        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Profile Header
-            Center(
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    child: Text(
-                      _nameController.text.isNotEmpty ? _nameController.text[0].toUpperCase() : 'U',
-                      style: const TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (!_isEditing) ...[
-                    Text(
-                      _nameController.text,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${_jobTitleController.text} at ${_companyController.text}',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _bioController.text,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 24),
-                    // Social Links
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildSocialButton(
-                          icon: Icons.link,
-                          label: 'LinkedIn',
-                          onPressed: () {
-                            // Open LinkedIn profile
-                          },
-                        ),
-                        const SizedBox(width: 16),
-                        _buildSocialButton(
-                          icon: Icons.chat_bubble,
-                          label: 'Twitter',
-                          onPressed: () {
-                            // Open Twitter profile
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 32),
-
-            // Edit Form
-            if (_isEditing)
-              Form(
-                key: _formKey,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadProfileData,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Name',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your name';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _jobTitleController,
-                      decoration: const InputDecoration(
-                        labelText: 'Job Title',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your job title';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _companyController,
-                      decoration: const InputDecoration(
-                        labelText: 'Company',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your company';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _bioController,
-                      decoration: const InputDecoration(
-                        labelText: 'Bio',
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: 4,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your bio';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _linkedInController,
-                      decoration: const InputDecoration(
-                        labelText: 'LinkedIn Profile URL',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.link),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _twitterController,
-                      decoration: const InputDecoration(
-                        labelText: 'Twitter Handle',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.chat_bubble),
-                      ),
-                    ),
+                    _buildUserSection(),
                     const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _saveUserData,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text('Save Profile'),
-                      ),
-                    ),
+                    _buildSubscriptionSection(),
+                    const SizedBox(height: 24),
+                    _buildUsageHistorySection(),
                   ],
                 ),
               ),
+            ),
+    );
+  }
 
-            if (!_isEditing) ...[
-              // Activity Section
-              const Divider(height: 32),
-              
-              Text(
-                'Recent Activity',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+  Widget _buildUserSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: Text(
+                _userName.isNotEmpty ? _userName[0].toUpperCase() : 'U',
+                style: const TextStyle(
+                  fontSize: 32,
                   fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
-              
-              const SizedBox(height: 16),
-              
-              _buildActivityItem(
-                title: 'Posted: "5 Tips for Better LinkedIn Engagement"',
-                time: '2 days ago',
-                engagement: '56 likes • 8 comments',
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _userName,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _userEmail,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
-              
-              _buildActivityItem(
-                title: 'Commented on "The Future of AI in Marketing"',
-                time: '3 days ago',
-                engagement: '12 likes',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubscriptionSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Current Subscription',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
               ),
-              
-              _buildActivityItem(
-                title: 'Shared an article: "Digital Transformation in 2024"',
-                time: '1 week ago',
-                engagement: '34 likes • 5 comments',
-              ),
-              
-              const SizedBox(height: 16),
-              
-              Center(
-                child: TextButton(
-                  onPressed: () {
-                    // View all activity
-                  },
-                  child: const Text('View All Activity'),
-                ),
-              ),
-              
-              // Stats Section
-              const Divider(height: 32),
-              
-              Text(
-                'Engagement Stats',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              
-              const SizedBox(height: 16),
-              
+            ),
+            const SizedBox(height: 16),
+            if (_subscription != null) ...[
               Row(
                 children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      title: 'Posts',
-                      value: '24',
-                      icon: Icons.post_add,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _subscription!.isActive 
+                          ? Colors.green.withOpacity(0.1)
+                          : Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _subscription!.isActive ? Icons.check_circle : Icons.schedule,
+                          size: 16,
+                          color: _subscription!.isActive ? Colors.green : Colors.orange,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _subscription!.status.toUpperCase(),
+                          style: TextStyle(
+                            color: _subscription!.isActive ? Colors.green : Colors.orange,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildStatCard(
-                      title: 'Comments',
-                      value: '86',
-                      icon: Icons.comment,
-                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildSubscriptionInfoRow('Plan', _subscription!.product),
+              const SizedBox(height: 8),
+              _buildSubscriptionInfoRow(
+                'Comments Remaining', 
+                '${_subscription!.commentsRemaining}'
+              ),
+              if (_subscription!.daysLeft > 0) ...[
+                const SizedBox(height: 8),
+                _buildSubscriptionInfoRow('Days Left', '${_subscription!.daysLeft} days'),
+              ],
+              if (_subscription!.nextInvoiceDate != null) ...[
+                const SizedBox(height: 8),
+                _buildSubscriptionInfoRow('Next Invoice', _subscription!.nextInvoiceDate!),
+              ],
+            ] else ...[
+              Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    size: 20,
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildStatCard(
-                      title: 'Likes',
-                      value: '342',
-                      icon: Icons.thumb_up,
+                  const SizedBox(width: 8),
+                  Text(
+                    'No active subscription',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -378,93 +217,176 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
     );
   }
-  
-  Widget _buildSocialButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-  }) {
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon),
-      label: Text(label),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
+
+  Widget _buildSubscriptionInfoRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
-  
-  Widget _buildActivityItem({
-    required String title,
-    required String time,
-    required String engagement,
-  }) {
+
+  Widget _buildUsageHistorySection() {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  time,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                Text(
-                  engagement,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
+                  'Recent Usage History',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
+                if (_recentHistory.isNotEmpty)
+                  TextButton(
+                    onPressed: () {
+                      // Navigate to full history - could open home screen with history tab
+                      Navigator.of(context).pop(); // Go back to home
+                      // The parent could handle navigating to history tab
+                    },
+                    child: const Text('View All'),
+                  ),
               ],
             ),
+            const SizedBox(height: 16),
+            if (_recentHistory.isEmpty) ...[
+              Center(
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.history,
+                      size: 48,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No usage history yet',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Your analyzed posts will appear here',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              ...(_recentHistory.map((post) => _buildHistoryItem(post)).toList()),
+            ],
           ],
         ),
       ),
     );
   }
-  
-  Widget _buildStatCard({
-    required String title,
-    required String value,
-    required IconData icon,
-  }) {
+
+  Widget _buildHistoryItem(AnalyzedPost post) {
+    final DateTime analyzedAt = DateTime.parse(post.analyzedAt);
+    final String timeAgo = AnalyzedPost.getRelativeTime(analyzedAt);
+
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
-        borderRadius: BorderRadius.circular(12),
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Column(
+      child: Row(
         children: [
-          Icon(
-            icon,
-            color: Theme.of(context).colorScheme.primary,
-            size: 28,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            child: Text(
+              post.author.isNotEmpty ? post.author[0].toUpperCase() : 'U',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ),
-          Text(
-            title,
-            style: Theme.of(context).textTheme.bodySmall,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  post.title,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'by ${post.author} • $timeAgo',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
           ),
+          if (post.functionality.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                _getFunctionalityDisplayText(post.functionality),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
         ],
       ),
     );
+  }
+
+  String _getFunctionalityDisplayText(String functionality) {
+    if (functionality.isEmpty || functionality == 'analyze') {
+      return 'Analyzed';
+    }
+    
+    if (functionality.contains('summary')) {
+      return 'Summary';
+    }
+    
+    if (functionality.contains('translate')) {
+      return 'Translate';
+    }
+    
+    if (functionality.contains('comment')) {
+      return 'Comment';
+    }
+    
+    return functionality;
   }
 } 

@@ -155,6 +155,7 @@ class MainActivity : FlutterActivity() {
         }
         
         // Set the method channel in the overlay service
+        Log.d("MainActivity", "Setting method channel in overlay service: $overlayChannel")
         EinsteiniOverlayService.setMethodChannel(overlayChannel)
     }
 
@@ -366,12 +367,6 @@ class MainActivity : FlutterActivity() {
                     // Process directly without showing the app UI
                     processSharedText(sharedText)
                     
-                    // Finish immediately to return to LinkedIn
-                    // Using a minimal delay to ensure the service has time to start
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        finish()
-                    }, 50)
-                    
                     // Don't pass control to Flutter, we're handling this directly
                     return
                 }
@@ -394,31 +389,22 @@ class MainActivity : FlutterActivity() {
             
             // Check if overlay permission is granted
             if (checkOverlayPermission()) {
-                // Stop any existing service first to ensure clean state
                 try {
-                    val stopIntent = Intent(this, EinsteiniOverlayService::class.java)
-                    stopService(stopIntent)
+                    // Start overlay service with the LinkedIn URL immediately
+                    val serviceIntent = Intent(this, EinsteiniOverlayService::class.java)
+                    serviceIntent.action = "PROCESS_LINKEDIN_URL"
+                    serviceIntent.putExtra("linkedInUrl", linkedInUrl)
+                    serviceIntent.putExtra("isDarkMode", isDarkModeEnabled())
+                    serviceIntent.putExtra("fromShare", true) // Flag to indicate this is from sharing
                     
-                    // Small delay to ensure service is properly stopped
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        // Start overlay service with the LinkedIn URL
-                        val serviceIntent = Intent(this, EinsteiniOverlayService::class.java)
-                        serviceIntent.action = "PROCESS_LINKEDIN_URL"
-                        serviceIntent.putExtra("linkedInUrl", linkedInUrl)
-                        serviceIntent.putExtra("isDarkMode", isDarkModeEnabled())
-                        serviceIntent.putExtra("fromShare", true) // Flag to indicate this is from sharing
-                        
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            startForegroundService(serviceIntent)
-                        } else {
-                            startService(serviceIntent)
-                        }
-                        
-                        // Add a slight delay to ensure service starts before finishing activity
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            finish()
-                        }, 100)
-                    }, 100)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        startForegroundService(serviceIntent)
+                    } else {
+                        startService(serviceIntent)
+                    }
+                    
+                    // Move to background immediately to return to LinkedIn seamlessly
+                    moveTaskToBack(true)
                 } catch (e: Exception) {
                     Log.e("MainActivity", "Error starting overlay service", e)
                     finish()

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:einsteiniapp/core/routes/app_router.dart';
-import 'package:einsteiniapp/features/home/screens/profile_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:einsteiniapp/core/widgets/custom_app_bar.dart';
 import 'package:einsteiniapp/core/widgets/app_logo.dart';
@@ -12,7 +11,7 @@ import 'package:einsteiniapp/features/home/widgets/ai_assistant_tab.dart';
 import 'package:einsteiniapp/features/home/widgets/history_tab.dart';
 import 'package:einsteiniapp/core/services/history_service.dart';
 import 'package:einsteiniapp/core/services/api_service.dart';
-import 'package:einsteiniapp/core/routes/app_router.dart' as router;
+import 'package:einsteiniapp/core/constants/app_constants.dart' as app_const;
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -174,8 +173,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final logoImage = isDarkMode ? 'assets/images/einsteini_white.png' : 'assets/images/einsteini_black.png';
     
     return Scaffold(
       appBar: CustomAppBar(
@@ -231,9 +228,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   }
   
   Widget _buildDrawer() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final logoImage = isDarkMode ? 'assets/images/einsteini_white.png' : 'assets/images/einsteini_black.png';
-
     return Drawer(
       child: Column(
         children: [
@@ -325,10 +319,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           ),
           ListTile(
             leading: const Icon(Icons.workspace_premium),
-            title: const Text('Upgrade Plan'),
+            title: const Text('Subscription'),
             onTap: () {
               Navigator.pop(context);
-              context.push(AppRoutes.plans);
+              context.push(AppRoutes.subscription);
             },
           ),
           const Spacer(),
@@ -339,9 +333,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
               padding: 6,
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.only(bottom: 16.0),
-            child: Text('Version 1.0.1'),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: Text('Version ${app_const.AppConstants.appVersion}'),
           ),
         ],
       ),
@@ -443,7 +437,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 Expanded(
                   child: _buildStatCard(
                     icon: Icons.comment,
-                    title: 'Comments Left',
+                    title: 'Tokens',
                     value: _loadingSubscription ? '...' : '$_commentsRemaining',
                   ),
                 ),
@@ -522,23 +516,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             ),
           ),
           const Spacer(),
-          if (_subscriptionStatus != 'active')
-            TextButton(
-              onPressed: () {
-                // Open subscription page or show upgrade dialog
-                context.push(AppRoutes.plans);
-              },
-              style: TextButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                minimumSize: const Size(80, 30),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
+          TextButton(
+            onPressed: () {
+              // Open subscription management page
+              context.push('/subscription');
+            },
+            style: TextButton.styleFrom(
+              backgroundColor: _subscriptionStatus == 'active' 
+                ? Colors.grey 
+                : Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              minimumSize: const Size(80, 30),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-              child: const Text('Upgrade'),
             ),
+            child: Text(_subscriptionStatus == 'active' ? 'Manage' : 'Upgrade'),
+          ),
         ],
       ),
     );
@@ -668,9 +663,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     final DateTime analyzedAt = DateTime.parse(post.analyzedAt);
     final String timeAgo = AnalyzedPost.getRelativeTime(analyzedAt);
     
-    String activityType = 'LinkedIn Post';
     IconData activityIcon = Icons.post_add;
-    Color iconColor = Colors.green;
     
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -931,7 +924,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  context.push(AppRoutes.plans);
+                  context.push(AppRoutes.subscription);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).colorScheme.primary,

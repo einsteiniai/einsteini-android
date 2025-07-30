@@ -224,6 +224,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const Divider(),
           
+          // Subscription & Billing
+          _buildSectionHeader('Subscription & Billing'),
+          ListTile(
+            title: const Text('Manage Subscription'),
+            subtitle: const Text('View plans, usage, and billing'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              context.push('/subscription');
+            },
+          ),
+          const Divider(),
+          
           // Privacy & Data
           _buildSectionHeader('Privacy & Data'),
           ListTile(

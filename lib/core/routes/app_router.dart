@@ -11,12 +11,12 @@ import '../../features/onboarding/screens/forgot_password_screen.dart';
 import '../../features/onboarding/screens/verify_reset_code_screen.dart';
 import '../../features/onboarding/screens/reset_password_screen.dart';
 import '../../features/onboarding/screens/verify_account_screen.dart';
-import '../../features/onboarding/screens/plans_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/home/screens/profile_screen.dart';
 import '../../features/home/screens/settings_screen.dart';
 import '../../features/home/screens/privacy_policy_screen.dart';
 import '../../features/home/screens/terms_of_service_screen.dart';
+import '../../features/subscription/screens/subscription_screen.dart';
 import '../constants/app_constants.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -36,7 +36,7 @@ class AppRoutes {
   static const String verifyResetCode = '/verify-reset-code';
   static const String resetPassword = '/reset-password';
   static const String verifyAccount = '/verify-account';
-  static const String plans = '/plans';
+  static const String subscription = '/subscription';
 }
 
 GoRouter createRouter() {
@@ -111,14 +111,9 @@ GoRouter createRouter() {
         },
       ),
       GoRoute(
-        path: AppRoutes.plans,
-        name: 'plans',
-        builder: (context, state) {
-          final bool isNewUser = state.extra != null ? 
-              (state.extra as Map<String, dynamic>)['isNewUser'] as bool? ?? false : 
-              false;
-          return PlansScreen(isNewUser: isNewUser);
-        },
+        path: AppRoutes.subscription,
+        name: 'subscription',
+        builder: (context, state) => const SubscriptionScreen(),
       ),
       GoRoute(
         path: AppRoutes.home,
@@ -176,8 +171,6 @@ GoRouter createRouter() {
       
       // Get permissions state
       final overlayPermissionGranted = prefs.getBool('overlay_permission_granted') ?? false;
-      // Always consider accessibility as granted since we're removing it
-      final accessibilityPermissionGranted = true;
       
       // Handle splash screen
       if (state.matchedLocation == '/splash') {
@@ -208,7 +201,6 @@ GoRouter createRouter() {
         AppRoutes.verifyResetCode,
         AppRoutes.resetPassword,
         AppRoutes.verifyAccount,
-        AppRoutes.plans,
         ...onboardingPaths
       ];
       

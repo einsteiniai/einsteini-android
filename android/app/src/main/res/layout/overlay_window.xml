@@ -15,95 +15,109 @@
         android:clickable="true"
         android:focusable="true" />
     
-    <!-- The actual overlay content with improved design -->
+    <!-- The actual overlay content with minimalistic design -->
     <LinearLayout
         android:id="@+id/overlay_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:minHeight="600dp"
         android:orientation="vertical"
         android:layout_gravity="bottom"
-        android:background="@drawable/overlay_rounded_background_bordered">
+        android:background="@drawable/overlay_background_dark">
 
-        <!-- Modern drag handle at the top for resizing -->
+        <!-- Minimalistic drag handle at the top -->
         <RelativeLayout
             android:id="@+id/resizeHandle"
             android:layout_width="match_parent"
-            android:layout_height="32dp"
-            android:paddingTop="16dp">
+            android:layout_height="24dp"
+            android:paddingTop="12dp">
 
             <View
-                android:layout_width="40dp"
-                android:layout_height="4dp"
+                android:layout_width="32dp"
+                android:layout_height="3dp"
                 android:layout_centerInParent="true"
-                android:background="#808080"
-                android:alpha="0.5"
-                android:elevation="1dp" 
-                android:layout_marginBottom="8dp"
+                android:background="#666666"
+                android:alpha="0.6"
                 android:layout_marginTop="4dp"
-                android:layout_marginHorizontal="8dp"
                 android:clickable="false"
                 android:focusable="false"
                 android:focusableInTouchMode="false"/>
         </RelativeLayout>
 
-        <!-- Simple tab buttons instead of TabLayout -->
+        <!-- Modern tab navigation without indicator -->
         <LinearLayout
-            android:id="@+id/tabButtons"
+            android:id="@+id/tabContainer"
             android:layout_width="match_parent"
-            android:layout_height="64dp"
+            android:layout_height="80dp"
             android:orientation="horizontal"
-            android:paddingHorizontal="16dp"
-            android:paddingTop="16dp"
-            android:paddingBottom="8dp"
-            android:background="#00000000">
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="16dp"
+            android:background="#121827"
+            android:elevation="8dp">
 
-            <Button
-                android:id="@+id/tab_summarize"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:layout_marginEnd="8dp"
-                android:text="Summarize"
-                android:textSize="14sp"
-                android:textColor="#FFFFFF"
-                android:background="@drawable/tab_button_selected"
-                android:elevation="3dp"
-                android:stateListAnimator="@null"
-                android:textAllCaps="false" />
-
-            <Button
-                android:id="@+id/tab_translate"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:layout_marginHorizontal="4dp"
-                android:text="Translate"
-                android:textSize="14sp"
-                android:textColor="#9AA1B1"
-                android:background="@drawable/tab_button_unselected"
-                android:stateListAnimator="@null"
-                android:textAllCaps="false" />
-
-            <Button
+            <TextView
                 android:id="@+id/tab_comment"
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
+                android:layout_height="48dp"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp"
                 android:text="Comment"
-                android:textSize="14sp"
-                android:textColor="#9AA1B1"
-                android:background="@drawable/tab_button_unselected"
-                android:stateListAnimator="@null"
-                android:textAllCaps="false" />
+                android:textSize="16sp"
+                android:textColor="#FFFFFF"
+                android:fontFamily="@font/tiktok_sans"
+                android:textAlignment="center"
+                android:gravity="center"
+                android:textStyle="bold"
+                android:paddingVertical="12dp"
+                android:paddingHorizontal="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@drawable/tab_button_active"
+                android:layout_margin="4dp" />
+
+            <TextView
+                android:id="@+id/tab_summarize"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="Summarize"
+                android:textSize="16sp"
+                android:textColor="#CCCCCC"
+                android:fontFamily="@font/tiktok_sans"
+                android:textAlignment="center"
+                android:gravity="center"
+                android:paddingVertical="12dp"
+                android:paddingHorizontal="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@drawable/tab_button_inactive"
+                android:layout_margin="4dp" />
+
+            <TextView
+                android:id="@+id/tab_translate"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="Translate"
+                android:textSize="16sp"
+                android:textColor="#CCCCCC"
+                android:fontFamily="@font/tiktok_sans"
+                android:textAlignment="center"
+                android:gravity="center"
+                android:paddingVertical="12dp"
+                android:paddingHorizontal="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@drawable/tab_button_inactive"
+                android:layout_margin="4dp" />
         </LinearLayout>
 
         <View
             android:id="@+id/divider"
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#2A3245"
-            android:alpha="0.5" />
+            android:background="#1A1F2E"
+            android:alpha="0.8"
+            android:layout_marginHorizontal="20dp" />
 
         <!-- Content area with ScrollView -->
         <androidx.core.widget.NestedScrollView
@@ -112,48 +126,44 @@
             android:layout_height="0dp"
             android:layout_weight="1"
             android:fillViewport="true"
-            android:scrollbars="none">
+            android:scrollbars="none"
+            android:layout_marginTop="8dp">
 
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
                 <!-- Generated Content Container -->
-                <androidx.cardview.widget.CardView
+                <LinearLayout
                     android:id="@+id/content_container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_margin="16dp"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="2dp"
-                    app:cardBackgroundColor="#1A2235"
-                    android:visibility="gone">
+                    android:layout_margin="20dp"
+                    android:background="@drawable/content_block_background"
+                    android:padding="16dp"
+                    android:visibility="gone"
+                    android:orientation="vertical">
 
-                    <LinearLayout
+                    <TextView
+                        android:id="@+id/content_type"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp">
+                        android:text="Generated Content"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#E0E0E0"
+                        android:fontFamily="@font/tiktok_sans" />
 
-                        <TextView
-                            android:id="@+id/content_type"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Generated Content"
-                            android:textSize="18sp"
-                            android:textStyle="bold"
-                            android:textColor="#BD79FF" />
-
-                        <TextView
-                            android:id="@+id/generated_content"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:text=""
-                            android:textSize="14sp"
-                            android:textColor="#FFFFFF" />
-                    </LinearLayout>
-                </androidx.cardview.widget.CardView>
+                    <TextView
+                        android:id="@+id/generated_content"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text=""
+                        android:textSize="14sp"
+                        android:textColor="#ABABAB"
+                        android:fontFamily="@font/dm_sans" />
+                </LinearLayout>
 
                 <!-- Summarize content -->
                 <LinearLayout
@@ -161,144 +171,334 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp"
+                    android:padding="20dp"
                     android:visibility="visible">
 
-                    <!-- Summary options card -->
-                    <androidx.cardview.widget.CardView
+                    <!-- Summary options -->
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="2dp"
-                        app:cardBackgroundColor="#1A2235">
+                        android:orientation="vertical"
+                        android:background="@drawable/content_block_background"
+                        android:padding="20dp"
+                        android:layout_marginBottom="16dp">
 
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Customize Summary"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="#BD79FF"
+                            android:fontFamily="@font/tiktok_sans" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Summary Type"
+                            android:textColor="#ABABAB"
+                            android:textSize="14sp"
+                            android:layout_marginTop="16dp"
+                            android:layout_marginBottom="8dp"
+                            android:fontFamily="@font/tiktok_sans" />
+
+                        <Spinner
+                            android:id="@+id/summary_type_spinner"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:background="@drawable/dropdown_background_dark"
+                            android:spinnerMode="dropdown" />
+
+                        <Button
+                            android:id="@+id/generate_summary_button"
+                            android:layout_width="match_parent"
+                            android:layout_height="56dp"
+                            android:text="Generate Summary"
+                            android:layout_marginTop="16dp"
+                            android:textColor="#FFFFFF"
+                            android:textAllCaps="false"
+                            android:textSize="15sp"
+                            android:background="@drawable/rounded_button_primary"
+                            android:fontFamily="@font/tiktok_sans" />
+                    </LinearLayout>
+
+                    <!-- Summary content -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:background="@drawable/content_block_background"
+                        android:padding="20dp"
+                        android:layout_marginBottom="12dp">
+
+                        <TextView
+                            android:id="@+id/block_title"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Summary"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="#BD79FF"
+                            android:fontFamily="@font/tiktok_sans" />
+
+                        <TextView
+                            android:id="@+id/block_content"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="This article discusses how AI can improve workplace productivity through automated task management and intelligent data processing."
+                            android:textSize="14sp"
+                            android:textColor="#ABABAB"
+                            android:fontFamily="@font/dm_sans" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Translate content -->
+                <LinearLayout
+                    android:id="@+id/contentViewTwitter"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp"
+                    android:visibility="gone">
+
+                    <!-- Translation options -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:background="@drawable/content_block_background"
+                        android:padding="20dp"
+                        android:layout_marginBottom="16dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Customize Translation"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="#BD79FF"
+                            android:fontFamily="@font/tiktok_sans" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Target Language"
+                            android:textColor="#ABABAB"
+                            android:textSize="14sp"
+                            android:layout_marginTop="16dp"
+                            android:layout_marginBottom="8dp"
+                            android:fontFamily="@font/tiktok_sans" />
+
+                        <Spinner
+                            android:id="@+id/language_spinner"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:background="@drawable/dropdown_background_dark"
+                            android:spinnerMode="dropdown" />
+
+                        <Button
+                            android:id="@+id/generate_translation_button"
+                            android:layout_width="match_parent"
+                            android:layout_height="56dp"
+                            android:text="Generate Translation"
+                            android:layout_marginTop="16dp"
+                            android:textColor="#FFFFFF"
+                            android:textAllCaps="false"
+                            android:textSize="15sp"
+                            android:background="@drawable/rounded_button_primary"
+                            android:fontFamily="@font/tiktok_sans" />
+                    </LinearLayout>
+
+                    <!-- Translation content -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:background="@drawable/content_block_background"
+                        android:padding="20dp"
+                        android:layout_marginBottom="12dp">
+
+                        <TextView
+                            android:id="@+id/translation_title"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Translation"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="#E0E0E0"
+                            android:fontFamily="@font/tiktok_sans" />
+
+                        <TextView
+                            android:id="@+id/translation_content"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="Your translated content will appear here."
+                            android:textSize="14sp"
+                            android:textColor="#ABABAB"
+                            android:fontFamily="@font/dm_sans" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Comment content -->
+                <LinearLayout
+                    android:id="@+id/contentViewComment"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp"
+                    android:visibility="gone">
+
+                    <!-- Comment options -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:background="@drawable/content_block_background"
+                        android:padding="20dp"
+                        android:layout_marginBottom="16dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Customize Comment"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="#BD79FF"
+                            android:fontFamily="@font/tiktok_sans" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Comment Tone"
+                            android:textColor="#ABABAB"
+                            android:textSize="14sp"
+                            android:layout_marginTop="16dp"
+                            android:layout_marginBottom="8dp"
+                            android:fontFamily="@font/tiktok_sans" />
+
+                        <Spinner
+                            android:id="@+id/tone_spinner"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:background="@drawable/dropdown_background_dark"
+                            android:spinnerMode="dropdown" />
+
+                        <!-- Personalization fields - shown when "Personalize" is selected -->
                         <LinearLayout
+                            android:id="@+id/personalization_container"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
-                            android:padding="20dp">
+                            android:layout_marginTop="16dp"
+                            android:visibility="gone">
 
                             <TextView
-                                android:layout_width="match_parent"
+                                android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Customize Summary"
-                                android:textSize="18sp"
-                                android:textStyle="bold"
-                                android:textColor="#BD79FF" />
-
-                            <View
-                                android:layout_width="40dp"
-                                android:layout_height="3dp"
-                                android:background="#BD79FF"
-                                android:layout_marginTop="8dp"
-                                android:layout_marginBottom="16dp"/>
-
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="vertical"
-                                android:background="@drawable/overlay_rounded_background_dark"
-                                android:padding="16dp">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="Summary Type"
-                                    android:textColor="#BD79FF"
-                                    android:textStyle="bold"
-                                    android:textSize="14sp"
-                                    android:layout_marginBottom="8dp"/>
-
-                                <Spinner
-                                    android:id="@+id/summary_type_spinner"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="48dp"
-                                    android:backgroundTint="#BD79FF"
-                                    android:spinnerMode="dropdown" />
-
-                                <Button
-                                    android:id="@+id/generate_summary_button"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="56dp"
-                                    android:text="Generate Summary"
-                                    android:layout_marginTop="16dp"
-                                    android:textColor="#FFFFFF"
-                                    android:textAllCaps="false"
-                                    android:textSize="15sp"
-                                    android:background="#BD79FF" />
-                            </LinearLayout>
-                        </LinearLayout>
-                    </androidx.cardview.widget.CardView>
-
-                    <!-- Rest of the content sections using CardView -->
-                    <androidx.cardview.widget.CardView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="12dp"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="1dp"
-                        app:cardBackgroundColor="#1A2235">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="16dp">
-
-                            <TextView
-                                android:id="@+id/block_title"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:text="Summary"
-                                android:textSize="18sp"
-                                android:textStyle="bold"
-                                android:textColor="#BD79FF" />
-
-                            <TextView
-                                android:id="@+id/block_content"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="12dp"
-                                android:text="This article discusses how AI can improve workplace productivity through automated task management and intelligent data processing."
+                                android:text="Tone"
+                                android:textColor="#ABABAB"
                                 android:textSize="14sp"
-                                android:textColor="#FFFFFF" />
-                        </LinearLayout>
-                    </androidx.cardview.widget.CardView>
+                                android:layout_marginBottom="8dp"
+                                android:fontFamily="@font/tiktok_sans" />
 
-                    <androidx.cardview.widget.CardView
+                            <EditText
+                                android:id="@+id/personalization_tone_field"
+                                android:layout_width="match_parent"
+                                android:layout_height="48dp"
+                                android:background="@drawable/dropdown_background_dark"
+                                android:padding="12dp"
+                                android:textColor="#ABABAB"
+                                android:textColorHint="#666666"
+                                android:hint="e.g., Professional, Casual, Supportive"
+                                android:fontFamily="@font/dm_sans"
+                                android:textSize="14sp"
+                                android:inputType="textCapWords"
+                                android:layout_marginBottom="16dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Additional Details"
+                                android:textColor="#ABABAB"
+                                android:textSize="14sp"
+                                android:layout_marginBottom="8dp"
+                                android:fontFamily="@font/tiktok_sans" />
+
+                            <EditText
+                                android:id="@+id/personalization_details"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:background="@drawable/dropdown_background_dark"
+                                android:padding="12dp"
+                                android:textColor="#ABABAB"
+                                android:textColorHint="#666666"
+                                android:hint="Example: Focus on technical aspects and strategic value"
+                                android:fontFamily="@font/dm_sans"
+                                android:textSize="14sp"
+                                android:minLines="3"
+                                android:maxLines="5"
+                                android:gravity="top|start"
+                                android:inputType="textCapSentences|textMultiLine" />
+                        </LinearLayout>
+
+                        <Button
+                            android:id="@+id/generate_comment_button"
+                            android:layout_width="match_parent"
+                            android:layout_height="56dp"
+                            android:text="Generate Comment"
+                            android:layout_marginTop="16dp"
+                            android:textColor="#FFFFFF"
+                            android:textAllCaps="false"
+                            android:textSize="15sp"
+                            android:background="@drawable/rounded_button_primary"
+                            android:fontFamily="@font/tiktok_sans" />
+                    </LinearLayout>
+
+                    <!-- Comment content -->
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="12dp"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="1dp"
-                        app:cardBackgroundColor="#1A2235">
+                        android:orientation="vertical"
+                        android:background="@drawable/content_block_background"
+                        android:padding="20dp"
+                        android:layout_marginBottom="12dp">
 
-                        <LinearLayout
+                        <TextView
+                            android:id="@+id/comment_title"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="16dp">
+                            android:text="Comment"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="#BD79FF"
+                            android:fontFamily="@font/tiktok_sans" />
 
-                            <TextView
-                                android:id="@+id/key_points_title"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:text="Key Points"
-                                android:textSize="18sp"
-                                android:textStyle="bold"
-                                android:textColor="#BD79FF" />
+                        <TextView
+                            android:id="@+id/comment_content"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="Your generated comment will appear here."
+                            android:textSize="14sp"
+                            android:textColor="#ABABAB"
+                            android:fontFamily="@font/dm_sans" />
 
-                            <TextView
-                                android:id="@+id/key_points_content"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="12dp"
-                                android:text="• AI automation reduces manual tasks\n• Data processing is 70% faster\n• Integration with existing tools is seamless\n• ROI is measurable within 3 months"
-                                android:textSize="14sp"
-                                android:textColor="#FFFFFF" />
-                        </LinearLayout>
-                    </androidx.cardview.widget.CardView>
+                        <Button
+                            android:id="@+id/copy_comment_button"
+                            android:layout_width="wrap_content"
+                            android:layout_height="36dp"
+                            android:layout_marginTop="12dp"
+                            android:text="Copy Comment"
+                            android:textColor="#FFFFFF"
+                            android:textAllCaps="false"
+                            android:textSize="12sp"
+                            android:paddingHorizontal="16dp"
+                            android:background="@drawable/rounded_button_primary"
+                            android:fontFamily="@font/tiktok_sans"
+                            android:visibility="gone" />
+                    </LinearLayout>
                 </LinearLayout>
             </FrameLayout>
         </androidx.core.widget.NestedScrollView>

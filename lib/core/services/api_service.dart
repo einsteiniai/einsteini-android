@@ -389,6 +389,77 @@ class ApiService {
     }
   }
 
+  /// Generate AI-powered personalized comment for LinkedIn content
+  Future<String> generatePersonalizedComment({
+    required String postContent,
+    required String author,
+    required String tone,
+    required String toneDetails,
+    String? imageUrl,
+  }) async {
+    try {
+      final email = await _getUserEmail();
+      
+      // Clean up the postContent similar to how Chrome extension does
+      String cleanedContent = postContent
+          .replaceAll(RegExp(r'\n+'), ' ') // Replace newlines with spaces
+          .replaceAll(RegExp(r'\s+'), ' ') // Replace multiple spaces with single space
+          .replaceAll('…more', '') // Remove "…more" text
+          .trim();
+      
+      // Truncate to first 300 chars to avoid server errors
+      if (cleanedContent.length > 300) {
+        cleanedContent = cleanedContent.substring(0, 300) + "...";
+      }
+      
+      // Create a personalized prompt that includes tone and details
+      String prompt = "Generate a personalized comment with a $tone tone for a LinkedIn post by $author: $cleanedContent";
+      
+      if (toneDetails.isNotEmpty) {
+        prompt += " Additional context: $toneDetails";
+      }
+      
+      debugPrint('Sending personalized comment request with prompt length: ${prompt.length}');
+      
+      final response = await http.post(
+        Uri.parse('https://backend.einsteini.ai/api/comment'),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-app-platform': 'android'
+        },
+        body: jsonEncode({
+          'requestContext': {'httpMethod': 'POST'},
+          'prompt': prompt,
+          'email': email,
+          'tone': tone,
+          'tone_details': toneDetails,
+        })
+      );
+      
+      debugPrint('Personalized comment response status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        if (data is Map) {
+          return data['text'] ?? data['comment'] ?? data['response'] ?? data.toString();
+        } else if (data is String) {
+          return data;
+        } else {
+          return data.toString();
+        }
+      } else {
+        debugPrint('Error response: ${response.body}');
+        // Return a personalized fallback message
+        return "This is an interesting perspective on the topic! Thanks for sharing your insights.";
+      }
+      
+    } catch (e) {
+      debugPrint('Exception generating personalized comment: $e');
+      return "Great insights! I appreciate you sharing this valuable content.";
+    }
+  }
+
   /// Generate AI-powered comment for LinkedIn content
   Future<String> generateComment({
     required String postContent,
@@ -1109,21 +1180,45 @@ class ApiService {
   }
   
   /// Get product details
-  Future<Map<String, dynamic>> getProductDetails() async {
+  Future<Map<String, dynamic>> getProductDetails([String? email]) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/getProductDetails'),
-        headers: _headers,
-      );
+      final Uri uri;
+      final dynamic body;
+      
+      if (email != null) {
+        // Use POST with email parameter for backend compatibility
+        uri = Uri.parse('$_baseUrl/getProductDetails');
+        body = jsonEncode({'email': email});
+      } else {
+        // Use GET for backward compatibility
+        uri = Uri.parse('$_baseUrl/getProductDetails');
+        body = null;
+      }
+      
+      final response = email != null 
+        ? await http.post(uri, headers: _headers, body: body)
+        : await http.get(uri, headers: _headers);
       
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'product': data['product'] ?? 'No Product',
+        };
       } else {
-        return {'error': 'Failed to get product details'};
+        return {
+          'success': false,
+          'product': 'No Product',
+          'error': 'Failed to get product details'
+        };
       }
     } catch (e) {
       debugPrint('Error getting product details: $e');
-      return {'error': e.toString()};
+      return {
+        'success': false,
+        'product': 'No Product',
+        'error': e.toString()
+      };
     }
   }
   
@@ -1150,8 +1245,6 @@ class ApiService {
   Future<Map<String, dynamic>> scrapeLinkedInPost(String url) async {
     try {
       debugPrint('Scraping LinkedIn post: $url');
-      
-      final email = await _getUserEmail();
       
       // Use the exact same endpoint and format as the Chrome extension
       final response = await http.get(
@@ -1181,20 +1274,20 @@ class ApiService {
           // Clean up the content by removing excessive whitespace and newlines
           content = _cleanContent(data);
           
-          // Try to extract metadata from the content string
-          author = _extractAuthor(data);
-          date = _extractDate(data);
-          likes = _extractLikes(data);
-          comments = _extractComments(data);
-          commentsList = _extractCommentsList(data);
+          // Use default values instead of custom extraction
+          author = 'Unknown author';
+          date = 'Unknown date';
+          likes = 0;
+          comments = 0;
+          commentsList = [];
           
         } else if (data is Map) {
-          // Extract structured data if available
+          // Extract structured data only from API response
           content = _cleanContent(data['content'] ?? '');
-          author = data['author'] ?? _extractAuthor(data['content'] ?? '');
-          date = data['date'] ?? _extractDate(data['content'] ?? '');
-          likes = data['likes'] ?? _extractLikes(data['content'] ?? '');
-          comments = data['comments'] ?? _extractComments(data['content'] ?? '');
+          author = data['author'] ?? 'Unknown author';
+          date = data['date'] ?? 'Unknown date';
+          likes = data['likes'] ?? 0;
+          comments = data['comments'] ?? 0;
           
           // Process images
           if (data['images'] != null && data['images'] is List) {
@@ -1205,7 +1298,7 @@ class ApiService {
           if (data['commentsList'] != null) {
             commentsList = _processCommentsList(data['commentsList']);
           } else {
-            commentsList = _extractCommentsList(data['content'] ?? '');
+            commentsList = [];
           }
         }
         
@@ -1346,74 +1439,6 @@ class ApiService {
     }
   }
   
-  /// Extract author name from content
-  String _extractAuthor(String content) {
-    // Try to find the author pattern in the content
-    final authorMatch = RegExp(r'Google Cloud|(?:author|by)[:\s]+([^\n]+)', caseSensitive: false).firstMatch(content);
-    if (authorMatch != null && authorMatch.groupCount > 0) {
-      final author = authorMatch.group(1)?.trim() ?? 'Google Cloud';
-      return author.isEmpty ? 'Google Cloud' : author;
-    }
-    
-    // Look for patterns like "Google Cloud 2,821,295 followers"
-    final followerMatch = RegExp(r'([^,\n]+)(?:\s+[\d,]+\s+followers)', caseSensitive: false).firstMatch(content);
-    if (followerMatch != null) {
-      return followerMatch.group(1)?.trim() ?? 'Unknown author';
-    }
-    
-    return 'Google Cloud';
-  }
-  
-  /// Extract date from content
-  String _extractDate(String content) {
-    // Look for time patterns like "1w", "2mo", "3h", etc.
-    final timeMatch = RegExp(r'\b(\d+[whmdys])\b', caseSensitive: false).firstMatch(content);
-    if (timeMatch != null) {
-      return timeMatch.group(0) ?? 'Unknown date';
-    }
-    
-    return 'Unknown date';
-  }
-  
-  /// Extract likes count from content
-  int _extractLikes(String content) {
-    // Look for patterns like "51 Likes" or "51"
-    final likesMatch = RegExp(r'(\d+)(?:\s+(?:Likes?|Reactions?))?', caseSensitive: false).firstMatch(content);
-    if (likesMatch != null) {
-      return int.tryParse(likesMatch.group(1) ?? '0') ?? 0;
-    }
-    
-    return 0;
-  }
-  
-  /// Extract comments count from content
-  int _extractComments(String content) {
-    // Look for patterns like "1 Comment" or "Comments: 0"
-    final commentsMatch = RegExp(r'(\d+)(?:\s+Comments?|Comments?:\s+(\d+))', caseSensitive: false).firstMatch(content);
-    if (commentsMatch != null) {
-      return int.tryParse(commentsMatch.group(1) ?? commentsMatch.group(2) ?? '0') ?? 0;
-    }
-    
-    return 0;
-  }
-  
-  /// Extract comments list from content
-  List<Map<String, String>> _extractCommentsList(String content) {
-    final commentsList = <Map<String, String>>[];
-    
-    // Try to find the comments section
-    final commentSectionMatch = RegExp(r'Mohammed Asif.*?(?=\n\n)', dotAll: true).firstMatch(content);
-    if (commentSectionMatch != null) {
-      final commentText = commentSectionMatch.group(0) ?? '';
-      commentsList.add({
-        'author': 'Mohammed Asif',
-        'text': 'How do you envision the integration of generative AI reshaping existing innovation roadmaps, particularly in industries that are traditionally slower to adopt new technologies?'
-      });
-    }
-    
-    return commentsList;
-  }
-
   /// Request a password reset code
   Future<Map<String, dynamic>> requestPasswordReset(String email) async {
     try {
@@ -1727,6 +1752,296 @@ class ApiService {
       return {
         'success': false,
         'message': 'Failed to resend verification code: ${e.toString()}',
+      };
+    }
+  }
+
+  // ========== SUBSCRIPTION & BILLING METHODS ==========
+
+  /// Get number of comments remaining
+  Future<Map<String, dynamic>> getCommentsRemaining(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/getNOC'),
+        headers: _headers,
+        body: jsonEncode({'email': email}),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'NOC': data['NOC'] ?? 0,
+          'name': data['name'] ?? 'User',
+        };
+      } else {
+        return {
+          'success': false,
+          'NOC': 0,
+          'message': 'Failed to get comments count',
+        };
+      }
+    } catch (e) {
+      debugPrint('Exception while getting comments count: $e');
+      return {
+        'success': false,
+        'NOC': 0,
+        'message': 'Network error: $e',
+      };
+    }
+  }
+
+  /// Get next invoice date
+  Future<Map<String, dynamic>> getNextInvoiceDate(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/NextInvoiceDate'),
+        headers: _headers,
+        body: jsonEncode({'email': email}),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'nextInvoice': data['NextInvoice'] ?? 'No Future Invoices',
+        };
+      } else {
+        return {
+          'success': false,
+          'nextInvoice': 'No Future Invoices',
+          'message': 'Failed to get next invoice date',
+        };
+      }
+    } catch (e) {
+      debugPrint('Exception while getting next invoice date: $e');
+      return {
+        'success': false,
+        'nextInvoice': 'No Future Invoices',
+        'message': 'Network error: $e',
+      };
+    }
+  }
+
+  /// Get payment details
+  Future<Map<String, dynamic>> getPaymentDetails(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/PaymentDetails'),
+        headers: _headers,
+        body: jsonEncode({'email': email}),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'cardType': data['cardType'] ?? 'No Card Provided',
+          'last4': data['last4'] ?? '0000',
+        };
+      } else {
+        return {
+          'success': false,
+          'cardType': 'No Card Provided',
+          'last4': '0000',
+          'message': 'Failed to get payment details',
+        };
+      }
+    } catch (e) {
+      debugPrint('Exception while getting payment details: $e');
+      return {
+        'success': false,
+        'cardType': 'No Card Provided',
+        'last4': '0000',
+        'message': 'Network error: $e',
+      };
+    }
+  }
+
+  /// Create checkout session for subscription
+  Future<Map<String, dynamic>> createCheckoutSession({
+    required String email,
+    required String plan,
+    double? latitude,
+    double? longitude,
+    String? referrer,
+  }) async {
+    try {
+      final body = {
+        'email_': email,
+        'plan': plan,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+        if (referrer != null) 'referrer': referrer,
+      };
+
+      final response = await http.post(
+        Uri.parse('https://backend.einsteini.ai/create-checkout-session'),
+        headers: _headers,
+        body: jsonEncode(body),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'url': data['url'] ?? '',
+          'message': data['message'] ?? '',
+        };
+      } else {
+        final data = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to create checkout session',
+        };
+      }
+    } catch (e) {
+      debugPrint('Exception while creating checkout session: $e');
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+      };
+    }
+  }
+
+  /// Upgrade subscription plan
+  Future<Map<String, dynamic>> upgradePlan({
+    required String email,
+    required String plan,
+    double? latitude,
+    double? longitude,
+  }) async {
+    try {
+      final body = {
+        'email_': email,
+        'plan': plan,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+      };
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/UpgradePlan'),
+        headers: _headers,
+        body: jsonEncode(body),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'url': data['url'] ?? '',
+          'message': data['message'] ?? 'Plan upgrade initiated',
+        };
+      } else {
+        final data = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to upgrade plan',
+        };
+      }
+    } catch (e) {
+      debugPrint('Exception while upgrading plan: $e');
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+      };
+    }
+  }
+
+  /// Deactivate subscription
+  Future<Map<String, dynamic>> deactivateSubscription(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/deactivate-subscription-02'),
+        headers: _headers,
+        body: jsonEncode({'email': email}),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Subscription deactivated successfully',
+        };
+      } else {
+        final data = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to deactivate subscription',
+        };
+      }
+    } catch (e) {
+      debugPrint('Exception while deactivating subscription: $e');
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+      };
+    }
+  }
+
+  /// Check if user's location is in India (for pricing)
+  Future<Map<String, dynamic>> getLocationInfo(double latitude, double longitude) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/getlocation'),
+        headers: _headers,
+        body: jsonEncode({
+          'latitude': latitude,
+          'longitude': longitude,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'country': data['country'] ?? 'usd',
+        };
+      } else {
+        return {
+          'success': false,
+          'country': 'usd',
+          'message': 'Failed to get location info',
+        };
+      }
+    } catch (e) {
+      debugPrint('Exception while getting location info: $e');
+      return {
+        'success': false,
+        'country': 'usd',
+        'message': 'Network error: $e',
+      };
+    }
+  }
+
+  /// Get subscription status with detailed information
+  Future<Map<String, dynamic>> getDetailedSubscriptionStatus(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://backend.einsteini.ai/api/saveEmail'),
+        headers: _headers,
+        body: jsonEncode({'email': email}),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'status': data['status'] ?? 'inactive',
+        };
+      } else {
+        return {
+          'success': false,
+          'status': 'inactive',
+          'message': 'Failed to get subscription status',
+        };
+      }
+    } catch (e) {
+      debugPrint('Exception while getting detailed subscription status: $e');
+      return {
+        'success': false,
+        'status': 'inactive',
+        'message': 'Network error: $e',
       };
     }
   }

@@ -26,16 +26,11 @@ class LinkedInOverlayControlsState extends State<LinkedInOverlayControls> {
   LinkedInContentMode _contentMode = LinkedInContentMode.comment;
   
   // Selected options
-  String _selectedCommentType = 'Agree';
+  String _selectedCommentType = 'Agree'; // Back to default
   String _selectedPostFramework = 'AIDA';
   String _selectedLanguage = 'english';
   String _selectedAboutType = 'Optimize';
   String _selectedConnectionType = 'Formal';
-  
-  // Personalization options
-  bool _isPersonalizationEnabled = false;
-  String _selectedTone = 'Professional';
-  final TextEditingController _toneDetailsController = TextEditingController();
   
   // Content generation options
   bool _includeHashtags = true;
@@ -43,20 +38,12 @@ class LinkedInOverlayControlsState extends State<LinkedInOverlayControls> {
   
   // Translation mode
   bool _isTranslateMode = false;
-
-  // List of available tones
-  static const List<String> _availableTones = [
-    'Professional',
-    'Friendly', 
-    'Enthusiastic', 
-    'Thoughtful',
-    'Academic', 
-    'Creative'
-  ];
   
   @override
   void initState() {
     super.initState();
+    
+    // Don't prefill tone controller - let user enter their own tone
     
     // Load user preferences
     _loadPreferences();
@@ -93,7 +80,6 @@ class LinkedInOverlayControlsState extends State<LinkedInOverlayControls> {
   
   @override
   void dispose() {
-    _toneDetailsController.dispose();
     super.dispose();
   }
   
@@ -148,12 +134,12 @@ class LinkedInOverlayControlsState extends State<LinkedInOverlayControls> {
                 _isLoading = false;
               });
             }
-          } else if (_isPersonalizationEnabled) {
-            await _overlayService.generatePersonalizedComment(
+          } else if (_selectedCommentType == 'Personalize') {
+            // For now, use regular comment generation - personalization will be in AI Assistant
+            await _overlayService.generateLinkedInComment(
               postContent: _detectedContent!,
               author: _detectedAuthor ?? '',
-              tone: _selectedTone,
-              toneDetails: _toneDetailsController.text,
+              commentType: 'Agree', // Default fallback
               imageUrl: _hasImage ? 'has_image' : null,
             );
           } else {
@@ -166,34 +152,32 @@ class LinkedInOverlayControlsState extends State<LinkedInOverlayControls> {
           }
           break;
           
-        case LinkedInContentMode.post:
-          await _overlayService.generateLinkedInPost(
-            prompt: _detectedContent!,
-            framework: _selectedPostFramework,
-            tone: _isPersonalizationEnabled ? _selectedTone : null,
-            toneDetails: _isPersonalizationEnabled ? _toneDetailsController.text : null,
-          );
-          break;
-          
-        case LinkedInContentMode.about:
-          await _overlayService.generateLinkedInAbout(
-            currentAbout: _detectedContent!,
-            buttonType: _selectedAboutType,
-            toneDetails: _isPersonalizationEnabled ? _toneDetailsController.text : null,
-          );
-          break;
-          
-        case LinkedInContentMode.connection:
-          await _overlayService.generateConnectionNote(
-            profileName: _detectedAuthor ?? '',
-            about: _detectedContent!,
-            buttonType: _selectedConnectionType,
-            tone: _isPersonalizationEnabled ? _selectedTone : null,
-            toneDetails: _isPersonalizationEnabled ? _toneDetailsController.text : null,
-          );
-          break;
-          
-        default:
+          case LinkedInContentMode.post:
+            await _overlayService.generateLinkedInPost(
+              prompt: _detectedContent!,
+              framework: _selectedPostFramework,
+              tone: null, // Remove personalization from here
+              toneDetails: null, // Remove personalization from here
+            );
+            break;
+            
+          case LinkedInContentMode.about:
+            await _overlayService.generateLinkedInAbout(
+              currentAbout: _detectedContent!,
+              buttonType: _selectedAboutType,
+              toneDetails: null, // Remove personalization from here
+            );
+            break;
+            
+          case LinkedInContentMode.connection:
+            await _overlayService.generateConnectionNote(
+              profileName: _detectedAuthor ?? '',
+              about: _detectedContent!,
+              buttonType: _selectedConnectionType,
+              tone: null, // Remove personalization from here
+              toneDetails: null, // Remove personalization from here
+            );
+            break;        default:
           // Other modes not implemented yet
           setState(() {
             _isLoading = false;
@@ -220,7 +204,6 @@ class LinkedInOverlayControlsState extends State<LinkedInOverlayControls> {
   void _switchContentMode(LinkedInContentMode mode) {
     setState(() {
       _contentMode = mode;
-      _isPersonalizationEnabled = false;
       _isTranslateMode = false;
     });
   }
@@ -252,11 +235,6 @@ class LinkedInOverlayControlsState extends State<LinkedInOverlayControls> {
             
             // Options section based on mode
             _buildOptionsSection(),
-            const SizedBox(height: 16),
-            
-            // Personalization controls
-            if (_detectedContent != null && _detectedContent!.isNotEmpty && !_isTranslateMode)
-              _buildPersonalizationSection(),
             const SizedBox(height: 16),
             
             // Generate button section
@@ -354,7 +332,6 @@ class LinkedInOverlayControlsState extends State<LinkedInOverlayControls> {
               _isTranslateMode = selected;
               if (selected) {
                 _contentMode = LinkedInContentMode.translate;
-                _isPersonalizationEnabled = false;
               } else {
                 _contentMode = LinkedInContentMode.comment;
               }
@@ -624,72 +601,23 @@ class LinkedInOverlayControlsState extends State<LinkedInOverlayControls> {
     }
   }
   
-  Widget _buildPersonalizationSection() {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Custom Personalization',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                ),
-                Switch(
-                  value: _isPersonalizationEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      _isPersonalizationEnabled = value;
-                    });
-                  },
-                ),
-              ],
-            ),
-            if (_isPersonalizationEnabled) ...[
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _selectedTone,
-                decoration: const InputDecoration(
-                  labelText: 'Tone',
-                  border: OutlineInputBorder(),
-                ),
-                items: _availableTones
-                    .map((tone) => DropdownMenuItem(
-                          value: tone,
-                          child: Text(tone),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedTone = value!;
-                  });
-                },
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _toneDetailsController,
-                decoration: const InputDecoration(
-                  labelText: 'Additional Instructions',
-                  hintText: 'E.g., "Focus on data analytics" or "Mention my experience in marketing"',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-  
   Widget _buildGenerateSection() {
     if (_detectedContent == null || _detectedContent!.isEmpty) {
       return const SizedBox.shrink();
+    }
+    
+    // Check if generate button should be enabled
+    bool canGenerate = false;
+    switch (_contentMode) {
+      case LinkedInContentMode.comment:
+        canGenerate = !_isTranslateMode;
+        break;
+      case LinkedInContentMode.post:
+      case LinkedInContentMode.about:
+      case LinkedInContentMode.connection:
+      case LinkedInContentMode.translate:
+        canGenerate = true;
+        break;
     }
     
     final buttonLabel = switch (_contentMode) {
@@ -703,7 +631,7 @@ class LinkedInOverlayControlsState extends State<LinkedInOverlayControls> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _generateContent,
+        onPressed: (_isLoading || !canGenerate) ? null : _generateContent,
         style: ElevatedButton.styleFrom(
           foregroundColor: Colors.white,
         ),

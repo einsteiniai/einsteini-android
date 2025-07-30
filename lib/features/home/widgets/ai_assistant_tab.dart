@@ -37,6 +37,10 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
   // Comment controller
   final TextEditingController _commentToneController = TextEditingController();
   
+  // Personalization controllers for comment generation
+  final TextEditingController _personalizeToneController = TextEditingController();
+  final TextEditingController _additionalDetailsController = TextEditingController();
+  
   // About Me controllers
   final TextEditingController _industryController = TextEditingController();
   final TextEditingController _experienceController = TextEditingController();
@@ -75,12 +79,16 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
   
   // Lists of options
   static const List<String> _availableLanguages = [
-    'Default', 'English', 'Spanish', 'French', 'German', 'Chinese', 'Japanese',
+    'Select Language', 'English', 'Spanish', 'French', 'German', 'Chinese', 'Japanese',
     'Russian', 'Arabic', 'Portuguese', 'Italian', 'Hindi', 'Dutch'
   ];
-  
+
+  static const List<String> _availableSummaryTypes = [
+    'Select Summary Type', 'Concise', 'Brief', 'Detailed'
+  ];
+
   static const List<String> _availableCommentTones = [
-    'Professional', 'Friendly', 'Enthusiastic', 'Thoughtful', 'Questioning', 'Supportive'
+    'Select Comment Type', 'Applaud', 'Agree', 'Fun', 'Personalize', 'Perspective', 'Question', 'Contradict'
   ];
   
   @override
@@ -96,9 +104,9 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
     _postLengthController.text = 'Medium';
     
     // Set default values for new controllers
-    _summaryTypeController.text = 'Concise';
-    _translationLanguageController.text = 'Default';
-    _commentToneController.text = 'Professional';
+    _summaryTypeController.text = 'Select Summary Type';
+    _translationLanguageController.text = 'Select Language';
+    _commentToneController.text = 'Select Comment Type';
   }
   
   @override
@@ -116,6 +124,8 @@ class AIAssistantTabState extends State<AIAssistantTab> with SingleTickerProvide
     _summaryTypeController.dispose();
     _translationLanguageController.dispose();
     _commentToneController.dispose();
+    _personalizeToneController.dispose();
+    _additionalDetailsController.dispose();
     _aboutToneController.dispose();
     super.dispose();
   }
@@ -1245,6 +1255,75 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
     );
   }
   
+  // Helper widget for text input fields
+  Widget _buildTextInputField({
+    required String label,
+    required String hintText,
+    required TextEditingController controller,
+    required IconData icon,
+    int maxLines = 1,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 8),
+          
+          TextField(
+            controller: controller,
+            maxLines: maxLines,
+            decoration: InputDecoration(
+              hintText: hintText,
+              filled: true,
+              fillColor: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey[800]!.withOpacity(0.5)
+                  : Colors.grey[100]!.withOpacity(0.7),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 1.5,
+                ),
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLinkInputSection() {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxHeight: 140),
@@ -1426,9 +1505,9 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
           children: [
             Expanded(
               child: _buildOptionButton(
-                title: 'Summarize',
-                icon: Icons.summarize,
-                onTap: () => _selectOption('summarize'),
+                title: 'Comment',
+                icon: Icons.comment,
+                onTap: () => _selectOption('comment'),
               ),
             ),
             const SizedBox(width: 16),
@@ -1442,9 +1521,9 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
             const SizedBox(width: 16),
             Expanded(
               child: _buildOptionButton(
-                title: 'Comment',
-                icon: Icons.comment,
-                onTap: () => _selectOption('comment'),
+                title: 'Summarize',
+                icon: Icons.summarize,
+                onTap: () => _selectOption('summarize'),
               ),
             ),
           ],
@@ -1723,7 +1802,7 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
             hintText: 'Select the type of summary',
             controller: _summaryTypeController,
             icon: Icons.format_list_bulleted,
-            options: ['Concise', 'Brief', 'Detailed'],
+            options: _availableSummaryTypes,
           ),
           
           const SizedBox(height: 16),
@@ -1732,7 +1811,7 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _isLoading ? null : () => _generateSummary(),
+              onPressed: _isLoading || _summaryTypeController.text == 'Select Summary Type' ? null : () => _generateSummary(),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
@@ -1920,7 +1999,7 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: _isLoading || _translationLanguageController.text == 'Default' ? null : () => _generateTranslation(),
+            onPressed: _isLoading || _translationLanguageController.text == 'Select Language' ? null : () => _generateTranslation(),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
@@ -2059,13 +2138,42 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
           options: _availableCommentTones,
         ),
         
+        // Show personalization fields when "Personalize" is selected
+        if (_commentToneController.text == 'Personalize') ...[
+          const SizedBox(height: 16),
+          
+          // Personalize Tone field
+          _buildTextInputField(
+            label: 'Personalize Tone',
+            hintText: 'e.g., Professional, Friendly, Casual',
+            controller: _personalizeToneController,
+            icon: Icons.tune,
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Additional Details field
+          _buildTextInputField(
+            label: 'Additional Details',
+            hintText: 'Any specific context or personal touch you want to add',
+            controller: _additionalDetailsController,
+            icon: Icons.notes,
+            maxLines: 3,
+          ),
+        ],
+        
         const SizedBox(height: 16),
         
         // Generate button
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: _isGeneratingComment || _commentToneController.text.isEmpty ? null : () => _generateComment(),
+            onPressed: _isGeneratingComment || 
+                      _commentToneController.text.isEmpty || 
+                      _commentToneController.text == 'Select Comment Type' ||
+                      (_commentToneController.text == 'Personalize' && 
+                       _personalizeToneController.text.isEmpty) 
+                      ? null : () => _generateComment(),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
@@ -2220,30 +2328,60 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
       _generatedComment = '';  // Clear previous comment while loading
     });
     
-    // Call the LinkedIn service to generate a real comment
+    // Call the LinkedIn service to generate a comment
     final linkedInService = LinkedInService();
-    linkedInService.generateComment(
-      postContent: _postContent,
-      author: _postAuthor,
-      commentType: _commentToneController.text.toLowerCase(),
-      imageUrl: _postImages.isNotEmpty ? _postImages[0] : null,
-    ).then((result) {
-      setState(() {
-        _isGeneratingComment = false;
-        _generatedComment = result;
+    
+    // Check if this is a personalized comment
+    if (_commentToneController.text.toLowerCase() == 'personalize') {
+      // Use the personalized comment API
+      linkedInService.generatePersonalizedComment(
+        postContent: _postContent,
+        author: _postAuthor,
+        tone: _personalizeToneController.text,
+        toneDetails: _additionalDetailsController.text,
+        imageUrl: _postImages.isNotEmpty ? _postImages[0] : null,
+      ).then((result) {
+        setState(() {
+          _isGeneratingComment = false;
+          _generatedComment = result;
+        });
+        
+        // Save to history with comment functionality
+        _saveToHistoryWithComment();
+        
+        ToastUtils.showSuccessToast('Personalized comment generated successfully');
+      }).catchError((error) {
+        setState(() {
+          _isGeneratingComment = false;
+          _generatedComment = 'Error generating personalized comment: $error';
+        });
+        ToastUtils.showErrorToast('Failed to generate personalized comment. Please try again.');
       });
-      
-      // Save to history with comment functionality
-      _saveToHistoryWithComment();
-      
-      ToastUtils.showSuccessToast('Comment generated successfully');
-    }).catchError((error) {
-      setState(() {
-        _isGeneratingComment = false;
-        _generatedComment = 'Error generating comment: $error';
+    } else {
+      // Use the regular comment API
+      linkedInService.generateComment(
+        postContent: _postContent,
+        author: _postAuthor,
+        commentType: _commentToneController.text.toLowerCase(),
+        imageUrl: _postImages.isNotEmpty ? _postImages[0] : null,
+      ).then((result) {
+        setState(() {
+          _isGeneratingComment = false;
+          _generatedComment = result;
+        });
+        
+        // Save to history with comment functionality
+        _saveToHistoryWithComment();
+        
+        ToastUtils.showSuccessToast('Comment generated successfully');
+      }).catchError((error) {
+        setState(() {
+          _isGeneratingComment = false;
+          _generatedComment = 'Error generating comment: $error';
+        });
+        ToastUtils.showErrorToast('Failed to generate comment. Please try again.');
       });
-      ToastUtils.showErrorToast('Failed to generate comment. Please try again.');
-    });
+    }
   }
 
   // Helper method to launch URLs
