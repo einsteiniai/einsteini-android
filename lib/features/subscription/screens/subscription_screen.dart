@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/models/subscription_model.dart';
 import '../../../core/services/subscription_service.dart';
+import '../../../core/services/location_service.dart';
 import '../../../core/utils/toast_utils.dart';
+import '../../../core/utils/permission_utils.dart';
+import '../../../core/constants/app_constants.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
@@ -14,9 +17,11 @@ class SubscriptionScreen extends ConsumerStatefulWidget {
 
 class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   final SubscriptionService _subscriptionService = SubscriptionService();
+  final LocationService _locationService = LocationService();
   SubscriptionModel? _subscription;
   bool _isLoading = true;
   bool _isYearly = true;
+  bool _isIndianUser = false;
 
   @override
   void initState() {
@@ -27,9 +32,15 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   Future<void> _loadSubscriptionInfo() async {
     setState(() => _isLoading = true);
     try {
-      final subscription = await _subscriptionService.fetchSubscriptionInfo();
+      // Load subscription info and detect user location in parallel
+      final results = await Future.wait([
+        _subscriptionService.fetchSubscriptionInfo(),
+        _locationService.isIndianUser(),
+      ]);
+      
       setState(() {
-        _subscription = subscription;
+        _subscription = results[0] as SubscriptionModel?;
+        _isIndianUser = results[1] as bool;
         _isLoading = false;
       });
     } catch (e) {
@@ -40,12 +51,31 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
   Future<void> _handlePlanSelection(String plan) async {
     try {
+      // Request location permission for pricing
+      bool hasLocationPermission = await PermissionUtils.checkPermissionGranted(AppPermission.location);
+      if (!hasLocationPermission) {
+        hasLocationPermission = await PermissionUtils.requestPermission(context, AppPermission.location);
+        if (!hasLocationPermission) {
+          ToastUtils.showInfoToast('Location permission helps determine accurate pricing');
+          // Continue anyway - the service will handle missing location gracefully
+        }
+      }
+      
       final checkoutUrl = await _subscriptionService.createCheckoutSession(
         plan: plan,
-        referrer: 'https://app.einsteini.ai/subscription/',
+        referrer: 'https://app.einsteini.ai/pricing/',
       );
       
       if (checkoutUrl != null) {
+        // Check if this is a Free Trial activation
+        if (checkoutUrl == 'FREE_TRIAL_ACTIVATED') {
+          ToastUtils.showSuccessToast('Free Trial activated successfully!');
+          // Refresh the subscription info
+          await _subscriptionService.fetchSubscriptionInfo();
+          return;
+        }
+        
+        // Regular Stripe checkout URL
         final uri = Uri.parse(checkoutUrl);
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -62,7 +92,20 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
   Future<void> _handleUpgrade(String plan) async {
     try {
-      final upgradeUrl = await _subscriptionService.upgradePlan(plan);
+      // Request location permission for pricing
+      bool hasLocationPermission = await PermissionUtils.checkPermissionGranted(AppPermission.location);
+      if (!hasLocationPermission) {
+        hasLocationPermission = await PermissionUtils.requestPermission(context, AppPermission.location);
+        if (!hasLocationPermission) {
+          ToastUtils.showInfoToast('Location permission helps determine accurate pricing');
+          // Continue anyway - the service will handle missing location gracefully
+        }
+      }
+      
+      final upgradeUrl = await _subscriptionService.upgradePlan(
+        plan,
+        referrer: 'https://app.einsteini.ai/pricing/',
+      );
       
       if (upgradeUrl != null) {
         final uri = Uri.parse(upgradeUrl);
@@ -135,7 +178,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (_subscription != null) ...[
+                    if (_subscription != null && 
+                        _subscription!.product != 'No Product' && 
+                        _subscription!.product.isNotEmpty) ...[
                       _buildCurrentPlanCard(),
                       const SizedBox(height: 24),
                       _buildUsageCard(),
@@ -384,11 +429,42 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Available Plans',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Available Plans',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (!_isLoading)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.location_on,
+                      size: 14,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _isIndianUser ? 'India (INR)' : 'Global (USD)',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 16),
         ...plans.map((plan) => _buildPlanCard(plan)),
@@ -397,7 +473,14 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   }
 
   Widget _buildPlanCard(SubscriptionPlan plan) {
-    final isCurrentPlan = _subscription?.product.toLowerCase().contains(plan.name.toLowerCase()) == true;
+    // Only consider it current plan if subscription exists and has a valid product (not 'No Product')
+    final hasValidSubscription = _subscription != null && 
+        _subscription!.product != 'No Product' && 
+        _subscription!.product.isNotEmpty;
+    
+    final isCurrentPlan = hasValidSubscription && 
+        _subscription!.product.toLowerCase().contains(plan.name.toLowerCase());
+    
     final canUpgrade = _subscription != null && _subscriptionService.canUpgradeTo(plan.name);
     
     return Card(
@@ -471,7 +554,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                         children: [
                           // Slashed original price
                           Text(
-                            plan.name == 'Pro' ? '\$120.00/year' : '\$150.00/year',
+                            plan.getOriginalPriceDisplay(_isYearly, isIndianUser: _isIndianUser),
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               decoration: TextDecoration.lineThrough,
                               color: Colors.grey,
@@ -480,7 +563,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                           const SizedBox(width: 8),
                           // Current discounted price
                           Text(
-                            plan.getPriceDisplay(_isYearly),
+                            plan.getPriceDisplay(_isYearly, isIndianUser: _isIndianUser),
                             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: plan.name == 'Gold' ? Colors.orange : Colors.green,
@@ -491,7 +574,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                     ] else ...[
                       // Regular price display for monthly or other plans
                       Text(
-                        plan.getPriceDisplay(_isYearly),
+                        plan.getPriceDisplay(_isYearly, isIndianUser: _isIndianUser),
                         style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: plan.name == 'Gold' ? Colors.orange : Colors.green,
@@ -511,9 +594,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 if (!isCurrentPlan)
                   ElevatedButton(
                     onPressed: () {
-                      final planName = _isYearly 
-                        ? '${plan.name} Yearly'
-                        : '${plan.name} Monthly';
+                      final planName = plan.name == 'Free' 
+                        ? 'Free Trial'
+                        : (_isYearly 
+                          ? '${plan.name} Yearly'
+                          : '${plan.name} Monthly');
                       
                       if (canUpgrade) {
                         _handleUpgrade(planName);

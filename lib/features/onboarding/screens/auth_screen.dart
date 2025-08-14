@@ -144,17 +144,36 @@ class _AuthScreenState extends State<AuthScreen> {
         if (mounted) {
           ToastUtils.showSuccessToast(result['message']);
           
-          // If this was a signup, show the plans screen
+          // Check if user has seen tutorial
+          final prefs = await SharedPreferences.getInstance();
+          final hasSeenTutorial = prefs.getBool(AppConstants.hasSeenTutorialKey) ?? false;
+          
+          // If this was a signup, show the tutorial first, then plans screen
           if (_isSignUp) {
-            context.pushNamed(
-              'plans',
-              extra: {
-                'isNewUser': true,
-              },
-            );
+            if (!hasSeenTutorial) {
+              // Mark tutorial as seen for future logins
+              await prefs.setBool(AppConstants.hasSeenTutorialKey, true);
+              // Navigate to tutorial with a flag indicating it's a new user
+              context.go(router.AppRoutes.tutorial + '?isNewUser=true');
+            } else {
+              context.pushNamed(
+                'subscription',
+                extra: {
+                  'isNewUser': true,
+                },
+              );
+            }
           } else {
-            // Otherwise go straight to home
-            context.go(router.AppRoutes.home);
+            // For login, check if they've seen tutorial
+            if (!hasSeenTutorial) {
+              // Mark tutorial as seen for future logins
+              await prefs.setBool(AppConstants.hasSeenTutorialKey, true);
+              // Navigate to tutorial first
+              context.go(router.AppRoutes.tutorial + '?isNewUser=false');
+            } else {
+              // Otherwise go straight to home
+              context.go(router.AppRoutes.home);
+            }
           }
         }
       } else {
@@ -629,7 +648,20 @@ class _AuthScreenState extends State<AuthScreen> {
       
       if (mounted) {
         ToastUtils.showSuccessToast('Successfully signed in with $provider');
-        context.go(router.AppRoutes.home);
+        
+        // Check if user has seen tutorial for social login
+        final prefs = await SharedPreferences.getInstance();
+        final hasSeenTutorial = prefs.getBool(AppConstants.hasSeenTutorialKey) ?? false;
+        
+        if (!hasSeenTutorial) {
+          // Mark tutorial as seen for future logins
+          await prefs.setBool(AppConstants.hasSeenTutorialKey, true);
+          // Navigate to tutorial first
+          context.go(router.AppRoutes.tutorial + '?isNewUser=false');
+        } else {
+          // Otherwise go straight to home
+          context.go(router.AppRoutes.home);
+        }
           }
         } else {
           if (mounted) {

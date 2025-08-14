@@ -3,29 +3,30 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:einsteiniapp/core/routes/app_router.dart' as router;
-import 'package:einsteiniapp/core/utils/platform_channel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:einsteiniapp/core/routes/app_router.dart' as router;
+import 'package:einsteiniapp/core/utils/permission_utils.dart';
+import 'package:einsteiniapp/core/constants/app_constants.dart';
+import 'package:einsteiniapp/core/utils/toast_utils.dart';
 
-// Import specific enum to avoid conflicts
-import 'package:einsteiniapp/core/utils/permission_utils.dart' show PermissionUtils;
-
-class OverlayPermissionScreen extends StatefulWidget {
-  const OverlayPermissionScreen({Key? key}) : super(key: key);
+class LocationPermissionScreen extends StatefulWidget {
+  const LocationPermissionScreen({Key? key}) : super(key: key);
 
   @override
-  State<OverlayPermissionScreen> createState() => _OverlayPermissionScreenState();
+  State<LocationPermissionScreen> createState() => _LocationPermissionScreenState();
 }
 
-class _OverlayPermissionScreenState extends State<OverlayPermissionScreen> {
+class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
   bool _isPermissionGranted = false;
-  bool _isChecking = true;
+  bool _isChecking = false;
   Timer? _checkTimer;
 
   @override
   void initState() {
     super.initState();
-    _checkPermission();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPermission();
+    });
   }
 
   @override
@@ -35,10 +36,8 @@ class _OverlayPermissionScreenState extends State<OverlayPermissionScreen> {
   }
 
   Future<void> _savePermissionState(bool granted) async {
-    // Save permission state
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('overlay_granted', granted);
-    await prefs.setBool('overlay_permission_granted', granted); // For backward compatibility
+    await prefs.setBool('location_permission_granted', granted);
   }
 
   Future<void> _checkPermission() async {
@@ -46,9 +45,8 @@ class _OverlayPermissionScreenState extends State<OverlayPermissionScreen> {
       _isChecking = true;
     });
 
-    final hasPermission = await PlatformChannel.checkOverlayPermission();
+    final hasPermission = await PermissionUtils.checkPermissionGranted(AppPermission.location);
     
-    // Save permission state
     await _savePermissionState(hasPermission);
     
     setState(() {
@@ -56,75 +54,68 @@ class _OverlayPermissionScreenState extends State<OverlayPermissionScreen> {
       _isChecking = false;
     });
     
-    // If permission is already granted, automatically proceed after a short delay
     if (_isPermissionGranted) {
       Future.delayed(const Duration(seconds: 1), () {
         if (mounted) {
-          context.go(router.AppRoutes.locationPermission);
-        }
-      });
-    } else {
-      // Start continuous checking for permission changes every 500ms 
-      // to detect changes faster when the user returns from Settings
-      _checkTimer = Timer.periodic(const Duration(milliseconds: 500), (_) async {
-        final permissionStatus = await PlatformChannel.checkOverlayPermission();
-        if (permissionStatus && mounted) {
-          // Save permission state
-          await _savePermissionState(true);
-          
-          setState(() {
-            _isPermissionGranted = true;
-          });
-          _checkTimer?.cancel();
-          
-          // Immediately navigate to location permission screen when permission is granted
-          if (mounted) {
-            context.go(router.AppRoutes.locationPermission);
-          }
+          _completeOnboarding();
         }
       });
     }
   }
 
-  void _requestPermission() async {
-    // Show loading indicator
+  Future<void> _requestPermission() async {
     setState(() {
       _isChecking = true;
     });
-    
+
     try {
-      // Open settings
-      await PlatformChannel.openOverlayPermissionSettings();
+      final granted = await PermissionUtils.requestPermission(context, AppPermission.location);
       
-      // Short delay to ensure settings screen has time to open
-      await Future.delayed(const Duration(milliseconds: 500));
+      await _savePermissionState(granted);
       
-      // Show instruction dialog to help users navigate to the correct settings
-      if (mounted) {
-        PermissionUtils.showOverlayPermissionInstructions(context);
-      }
-      
-    } catch (e) {
-      print('Error requesting permission: $e');
-      // If opening settings failed, show the instructions dialog
-      if (mounted) {
-        PermissionUtils.showOverlayPermissionInstructions(context);
-      }
-    } finally {
-      // Always reset the checking state
-      if (mounted) {
-        setState(() {
-          _isChecking = false;
+      setState(() {
+        _isPermissionGranted = granted;
+        _isChecking = false;
+      });
+
+      if (granted) {
+        ToastUtils.showSuccessToast('Location permission granted!');
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) {
+            _completeOnboarding();
+          }
+        });
+      } else {
+        ToastUtils.showInfoToast('You can grant location permission later in settings');
+        // Still complete onboarding even if permission is denied
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) {
+            _completeOnboarding();
+          }
         });
       }
-      // Permission checking will continue with the timer
+    } catch (e) {
+      setState(() {
+        _isChecking = false;
+      });
+      ToastUtils.showErrorToast('Error requesting location permission');
     }
   }
 
-  void _skipPermission() async {
-    // Mark as intentionally skipped
+  Future<void> _skipPermission() async {
     await _savePermissionState(false);
-    context.go(router.AppRoutes.locationPermission);
+    ToastUtils.showInfoToast('You can enable location permission later in settings');
+    _completeOnboarding();
+  }
+
+  Future<void> _completeOnboarding() async {
+    // Mark onboarding as completed
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(AppConstants.hasCompletedOnboardingKey, true);
+    
+    if (mounted) {
+      context.go(router.AppRoutes.auth);
+    }
   }
 
   @override
@@ -151,14 +142,14 @@ class _OverlayPermissionScreenState extends State<OverlayPermissionScreen> {
                           height: 240,
                           margin: const EdgeInsets.symmetric(vertical: 32),
                           child: Lottie.asset(
-                            'assets/animations/overlay_permission.json',
+                            'assets/animations/accessibility_permission.json',
                             fit: BoxFit.contain,
                           ),
                         ),
                       ).animate().fadeIn(duration: 600.ms),
                       
                       Text(
-                        'Display Over Other Apps',
+                        'Location Permission',
                         style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -167,7 +158,7 @@ class _OverlayPermissionScreenState extends State<OverlayPermissionScreen> {
                       const SizedBox(height: 16),
                       
                       Text(
-                        'einsteini.ai needs permission to display over other apps to help you craft engaging LinkedIn content directly within the platform.',
+                        'We use your location to provide accurate regional pricing and better personalized content for your area.',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           height: 1.5,
                         ),
@@ -177,27 +168,27 @@ class _OverlayPermissionScreenState extends State<OverlayPermissionScreen> {
                       
                       _buildPermissionItem(
                         context,
-                        title: 'LinkedIn Integration',
-                        description: 'Create engaging comments and posts directly within LinkedIn',
-                        icon: Icons.comment,
+                        title: 'Regional Pricing',
+                        description: 'Get accurate pricing tailored to your local market',
+                        icon: Icons.attach_money,
                       ).animate().fadeIn(duration: 600.ms, delay: 500.ms),
                       
                       const SizedBox(height: 24),
                       
                       _buildPermissionItem(
                         context,
-                        title: 'Boost Engagement',
-                        description: 'Get AI-powered content suggestions while browsing',
-                        icon: Icons.trending_up,
+                        title: 'Local Content',
+                        description: 'Receive region-specific suggestions and trends',
+                        icon: Icons.location_on,
                       ).animate().fadeIn(duration: 600.ms, delay: 600.ms),
                       
                       const SizedBox(height: 24),
                       
                       _buildPermissionItem(
                         context,
-                        title: 'Save Time',
-                        description: 'Generate professional content in seconds',
-                        icon: Icons.timer,
+                        title: 'Better Experience',
+                        description: 'Enjoy a more personalized and relevant experience',
+                        icon: Icons.star,
                       ).animate().fadeIn(duration: 600.ms, delay: 700.ms),
                       
                       const SizedBox(height: 16),
@@ -217,7 +208,7 @@ class _OverlayPermissionScreenState extends State<OverlayPermissionScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                'You can change this permission anytime in your device settings under "Display over other apps"',
+                                'Your location data is only used for pricing and content personalization. We respect your privacy.',
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ),
@@ -242,7 +233,7 @@ class _OverlayPermissionScreenState extends State<OverlayPermissionScreen> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  'Permission Granted! Continue to the next step.',
+                                  'Location permission granted! Setting up your personalized experience.',
                                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                     color: Colors.green,
                                   ),
@@ -266,7 +257,7 @@ class _OverlayPermissionScreenState extends State<OverlayPermissionScreen> {
                           width: double.infinity,
                           child: ElevatedButton(
                             onPressed: _isPermissionGranted 
-                              ? () => context.go(router.AppRoutes.home)
+                              ? _completeOnboarding
                               : _requestPermission,
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -335,4 +326,4 @@ class _OverlayPermissionScreenState extends State<OverlayPermissionScreen> {
       ],
     );
   }
-} 
+}

@@ -125,6 +125,9 @@ class SubscriptionPlan {
   final String displayName;
   final double monthlyPrice;
   final double yearlyPrice;
+  final double monthlyPriceINR;
+  final double yearlyPriceINR;
+  final double discountedYearlyPriceINR;
   final int monthlyComments;
   final int yearlyComments;
   final List<String> features;
@@ -136,6 +139,9 @@ class SubscriptionPlan {
     required this.displayName,
     required this.monthlyPrice,
     required this.yearlyPrice,
+    required this.monthlyPriceINR,
+    required this.yearlyPriceINR,
+    required this.discountedYearlyPriceINR,
     required this.monthlyComments,
     required this.yearlyComments,
     required this.features,
@@ -149,6 +155,9 @@ class SubscriptionPlan {
       displayName: 'Free',
       monthlyPrice: 0,
       yearlyPrice: 0,
+      monthlyPriceINR: 0,
+      yearlyPriceINR: 0,
+      discountedYearlyPriceINR: 0,
       monthlyComments: 75,
       yearlyComments: 75,
       features: [
@@ -164,6 +173,9 @@ class SubscriptionPlan {
       displayName: 'Pro',
       monthlyPrice: 9.99,
       yearlyPrice: 107.91,
+      monthlyPriceINR: 499,
+      yearlyPriceINR: 4999,
+      discountedYearlyPriceINR: 4491,
       monthlyComments: 300,
       yearlyComments: 3600,
       features: [
@@ -179,6 +191,9 @@ class SubscriptionPlan {
       displayName: 'Gold',
       monthlyPrice: 12.49,
       yearlyPrice: 134.91,
+      monthlyPriceINR: 630,
+      yearlyPriceINR: 6300,
+      discountedYearlyPriceINR: 5666,
       monthlyComments: 500,
       yearlyComments: 6000,
       features: [
@@ -195,6 +210,9 @@ class SubscriptionPlan {
       displayName: 'Enterprise',
       monthlyPrice: 0, // Contact sales
       yearlyPrice: 0, // Contact sales
+      monthlyPriceINR: 0,
+      yearlyPriceINR: 0,
+      discountedYearlyPriceINR: 0,
       monthlyComments: -1, // Unlimited
       yearlyComments: -1, // Unlimited
       features: [
@@ -206,13 +224,34 @@ class SubscriptionPlan {
     ),
   ];
 
-  String getPriceDisplay(bool isYearly) {
+  String getPriceDisplay(bool isYearly, {bool isIndianUser = false}) {
     if (monthlyPrice == 0 && yearlyPrice == 0) {
-      return name == 'Free' ? '\$0' : 'Contact Sales';
+      return name == 'Free' ? (isIndianUser ? '₹0' : '\$0') : 'Contact Sales';
     }
-    return isYearly 
-      ? '\$${yearlyPrice.toStringAsFixed(2)}/year'
-      : '\$${monthlyPrice.toStringAsFixed(2)}/month';
+    
+    if (isIndianUser) {
+      return isYearly 
+        ? '₹${discountedYearlyPriceINR.toStringAsFixed(0)}/year'
+        : '₹${monthlyPriceINR.toStringAsFixed(0)}/month';
+    } else {
+      return isYearly 
+        ? '\$${yearlyPrice.toStringAsFixed(2)}/year'
+        : '\$${monthlyPrice.toStringAsFixed(2)}/month';
+    }
+  }
+
+  String getOriginalPriceDisplay(bool isYearly, {bool isIndianUser = false}) {
+    if (!isYearly || (name != 'Pro' && name != 'Gold')) {
+      return ''; // No original price to show
+    }
+    
+    if (isIndianUser) {
+      return '₹${yearlyPriceINR.toStringAsFixed(0)}/year';
+    } else {
+      // For USD, calculate original price based on monthly * 12
+      final originalYearlyPrice = monthlyPrice * 12;
+      return '\$${originalYearlyPrice.toStringAsFixed(2)}/year';
+    }
   }
 
   String getCommentsDisplay(bool isYearly) {

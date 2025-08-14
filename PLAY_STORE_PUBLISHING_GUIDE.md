@@ -24,7 +24,7 @@ This guide walks you through the process of publishing your Flutter app to the G
 
 ## Step 2: Prepare Release Build
 
-1. Update your app version in `pubspec.yaml` if needed (currently 1.1.0+9).
+1. Update your app version in `pubspec.yaml` if needed (currently 1.1.0+10).
    - The format is `version: X.Y.Z+N` where:
      - X.Y.Z is the versionName (user-facing version number)
      - N is the versionCode (must be incremented for each update)

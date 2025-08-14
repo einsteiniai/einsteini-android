@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:einsteiniapp/core/routes/app_router.dart' as router;
-import 'package:einsteiniapp/core/utils/permission_utils.dart';
+import 'package:einsteiniapp/core/constants/app_constants.dart' show AppPermission;
 
 class PermissionReminderBox extends StatelessWidget {
   final AppPermission permission;

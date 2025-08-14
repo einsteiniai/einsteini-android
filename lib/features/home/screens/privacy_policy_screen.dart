@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/privacy_policy.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/custom_app_bar.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({Key? key}) : super(key: key);
@@ -14,10 +12,10 @@ class PrivacyPolicyScreen extends StatelessWidget {
     final isDarkMode = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: CustomAppBar(
-        title: PrivacyPolicy.title,
-        showBackButton: true,
-        centerTitle: false,
+      appBar: AppBar(
+        title: const Text('Privacy Policy'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: SafeArea(
         child: Padding(

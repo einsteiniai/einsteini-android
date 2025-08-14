@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/onboarding/screens/welcome_screen.dart';
 import '../../features/onboarding/screens/overlay_permission_screen.dart';
+import '../../features/onboarding/screens/location_permission_screen.dart';
 import '../../features/onboarding/screens/accessibility_permission_screen.dart';
 import '../../features/onboarding/screens/theme_selection_screen.dart';
 import '../../features/onboarding/screens/auth_screen.dart';
@@ -16,6 +17,7 @@ import '../../features/home/screens/profile_screen.dart';
 import '../../features/home/screens/settings_screen.dart';
 import '../../features/home/screens/privacy_policy_screen.dart';
 import '../../features/home/screens/terms_of_service_screen.dart';
+import '../../features/home/screens/tutorial_screen.dart';
 import '../../features/subscription/screens/subscription_screen.dart';
 import '../constants/app_constants.dart';
 
@@ -25,6 +27,7 @@ class AppRoutes {
   static const String welcome = '/welcome';
   static const String accessibilityPermission = '/accessibility-permission';
   static const String overlayPermission = '/overlay-permission';
+  static const String locationPermission = '/location-permission';
   static const String themeSelection = '/theme-selection';
   static const String auth = '/auth';
   static const String home = '/home';
@@ -37,6 +40,7 @@ class AppRoutes {
   static const String resetPassword = '/reset-password';
   static const String verifyAccount = '/verify-account';
   static const String subscription = '/subscription';
+  static const String tutorial = '/tutorial';
 }
 
 GoRouter createRouter() {
@@ -65,6 +69,10 @@ GoRouter createRouter() {
       GoRoute(
         path: AppRoutes.overlayPermission,
         builder: (context, state) => const OverlayPermissionScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.locationPermission,
+        builder: (context, state) => const LocationPermissionScreen(),
       ),
       GoRoute(
         path: AppRoutes.themeSelection,
@@ -135,6 +143,11 @@ GoRouter createRouter() {
         path: AppRoutes.termsOfService,
         builder: (context, state) => const TermsOfServiceScreen(),
       ),
+      GoRoute(
+        path: AppRoutes.tutorial,
+        name: 'tutorial',
+        builder: (context, state) => const TutorialScreen(),
+      ),
       ShellRoute(
         builder: (context, state, child) {
           return MainAppScaffold(child: child);
@@ -189,6 +202,7 @@ GoRouter createRouter() {
       final onboardingPaths = [
         AppRoutes.welcome, 
         AppRoutes.overlayPermission, 
+        AppRoutes.locationPermission,
         // Remove accessibility from normal flow
         // AppRoutes.accessibilityPermission, 
         AppRoutes.themeSelection
@@ -201,6 +215,8 @@ GoRouter createRouter() {
         AppRoutes.verifyResetCode,
         AppRoutes.resetPassword,
         AppRoutes.verifyAccount,
+        AppRoutes.privacyPolicy,
+        AppRoutes.termsOfService,
         ...onboardingPaths
       ];
       

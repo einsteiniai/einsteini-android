@@ -56,6 +56,7 @@ import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.children
 import androidx.core.widget.NestedScrollView
 import com.google.android.material.card.MaterialCardView
+import com.einsteini.app.R
 import io.flutter.plugin.common.MethodChannel
 import org.json.JSONObject
 import java.io.BufferedReader

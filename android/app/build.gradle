@@ -17,12 +17,12 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        jvmTarget = JavaVersion.VERSION_11
     }
     
     // Enable lint checks for security
@@ -41,8 +41,8 @@ android {
         applicationId = "com.einsteini.app"
         minSdk = 23 // Ensure compatibility
         targetSdk = 35 // Updated to target API level 35 for Play Store requirement
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        versionCode = 19
+        versionName = "2.2.2"
         
         // Add this for flutter_appauth
         manifestPlaceholders += [
@@ -51,6 +51,25 @@ android {
         
         // Properly document permissions
         resConfigs "en" // Use only English resources for smaller APK
+        
+        // 16 KB native library alignment for Android 15+ devices
+        ndk {
+            // Ensure all native libraries are aligned to 16 KB boundaries
+            debugSymbolLevel 'FULL'
+        }
+    }
+    
+    // Add packaging options for native library alignment
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = false
+            // Ensure alignment compatibility for 16 KB page size devices
+            pickFirsts += '**/libc++_shared.so'
+            pickFirsts += '**/libflutter.so'
+        }
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
     }
 
     signingConfigs {
@@ -97,8 +116,12 @@ flutter {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.7.10"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.7.10"
     implementation 'androidx.cardview:cardview:1.0.0'
+    
+    // AndroidX Core for edge-to-edge and window insets
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.activity:activity-ktx:1.8.2'
     
     // Use only feature-delivery which includes the necessary Play Core components
     // Use version 2.0.0+ for Android 14 compatibility

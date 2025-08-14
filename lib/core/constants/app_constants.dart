@@ -3,7 +3,7 @@ class AppConstants {
   // App Info
   static const String appName = 'einsteini.ai';
   static const String appDescription = 'LinkedIn engagement assistant powered by AI';
-  static const String appVersion = '1.1.0';
+  static const String appVersion = '2.2.2';
   static const String appTagline = 'Effortlessly human.';
   
   // Routes
@@ -25,6 +25,7 @@ class AppConstants {
   static const String userProfileKey = 'user_profile';
   static const String themePreferenceKey = 'theme_preference';
   static const String hasCompletedOnboardingKey = 'has_completed_onboarding';
+  static const String hasSeenTutorialKey = 'has_seen_tutorial';
   
   // API Constants
   static const String apiBaseUrl = 'https://api.einsteini.ai';
@@ -83,10 +84,13 @@ class AppRoutes {
   static const String home = '/home';
   static const String settings = '/settings';
   static const String profile = '/profile';
+  static const String subscription = '/subscription';
+  static const String tutorial = '/tutorial';
 }
 
 /// Application permission types
 enum AppPermission {
   overlay,
-  accessibility
+  accessibility,
+  location
 } 

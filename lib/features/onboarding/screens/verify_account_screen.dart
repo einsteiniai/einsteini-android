@@ -30,7 +30,7 @@ class _VerifyAccountScreenState extends State<VerifyAccountScreen> {
   }
 
   Future<void> _verifyAccount() async {
-    if (!_formKey.currentState!.validate()) {
+    if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
 
@@ -52,17 +52,16 @@ class _VerifyAccountScreenState extends State<VerifyAccountScreen> {
           _isLoading = false;
         });
         
-        if (result['success']) {
-          ToastUtils.showSuccessToast(result['message']);
-          // Navigate to plans screen since account is now verified
-          context.pushNamed(
-            'plans',
-            extra: {
-              'isNewUser': true,
-            },
-          );
+        // Check if verification was successful
+        if (result['success'] == true) {
+          final message = result['message'] ?? 'Account verified successfully';
+          ToastUtils.showSuccessToast(message);
+          // Navigate to subscription screen since account is now verified
+          // Use go instead of pushNamed to replace the current navigation stack
+          context.go('/subscription');
         } else {
-          ToastUtils.showErrorToast(result['message']);
+          final errorMessage = result['message'] ?? 'Verification failed';
+          ToastUtils.showErrorToast(errorMessage);
         }
       }
     } catch (e) {

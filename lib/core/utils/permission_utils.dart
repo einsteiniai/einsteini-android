@@ -1,16 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:go_router/go_router.dart';
-import 'package:einsteiniapp/core/routes/app_router.dart' as router;
+import 'package:einsteiniapp/core/constants/app_constants.dart';
 import 'platform_channel.dart';
-
-enum AppPermission {
-  overlay,
-  // accessibility, // Commented out accessibility permission
-}
 
 class PermissionUtils {
   static Future<bool> checkOverlayPermission() async {
@@ -202,24 +195,41 @@ class PermissionUtils {
       case AppPermission.overlay:
         await prefs.setBool('overlay_granted', granted);
         break;
-      /*
+      case AppPermission.location:
+        await prefs.setBool('location_granted', granted);
+        break;
       case AppPermission.accessibility:
         await prefs.setBool('accessibility_granted', granted);
         break;
-      */
     }
+  }
+  
+  static Future<bool> checkLocationPermission() async {
+    return await Permission.location.isGranted;
+  }
+  
+  static Future<bool> requestLocationPermission() async {
+    final status = await Permission.location.request();
+    return status.isGranted;
+  }
+  
+  static Future<void> openLocationSettings() async {
+    await openAppSettings();
+  }
+  
+  static Future<void> openAccessibilitySettings() async {
+    await openAppSettings();
   }
   
   static Future<bool> checkPermissionGranted(AppPermission permission) async {
     switch (permission) {
       case AppPermission.overlay:
         return await checkOverlayPermission();
-      /*
+      case AppPermission.location:
+        return await checkLocationPermission();
       case AppPermission.accessibility:
-        return await checkAccessibilityPermission();
-      */
+        return false; // Can't check accessibility permission programmatically
     }
-    return false; // Added default return value
   }
   
   static Future<bool> requestPermission(BuildContext context, AppPermission permission) async {
@@ -233,13 +243,18 @@ class PermissionUtils {
         }
         return true;
         
-      /*
+      case AppPermission.location:
+        final isGranted = await requestLocationPermission();
+        if (!isGranted) {
+          await openLocationSettings();
+          return false;
+        }
+        return true;
+        
       case AppPermission.accessibility:
         await openAccessibilitySettings();
         return false; // We can't programmatically determine if accessibility was granted
-      */
     }
-    return false; // Added default return value
   }
   
   static Future<bool> toggleOverlay(bool enable) async {

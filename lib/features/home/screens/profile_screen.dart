@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:einsteiniapp/core/widgets/custom_app_bar.dart';
 import 'package:einsteiniapp/core/services/subscription_service.dart';
 import 'package:einsteiniapp/core/services/history_service.dart';
 import 'package:einsteiniapp/core/models/subscription_model.dart';
@@ -59,11 +58,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Profile',
-        showBackButton: true,
-        showDrawerButton: false,
-        centerTitle: false,
+      appBar: AppBar(
+        title: const Text('Profile'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

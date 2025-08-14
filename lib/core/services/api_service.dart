@@ -1870,10 +1870,12 @@ class ApiService {
       final body = {
         'email_': email,
         'plan': plan,
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
+        if (latitude != null) 'latitude': latitude.toString(),
+        if (longitude != null) 'longitude': longitude.toString(),
         if (referrer != null) 'referrer': referrer,
       };
+
+      debugPrint('Creating checkout session with body: $body');
 
       final response = await http.post(
         Uri.parse('https://backend.einsteini.ai/create-checkout-session'),
@@ -1881,13 +1883,36 @@ class ApiService {
         body: jsonEncode(body),
       );
       
+      debugPrint('Checkout session response status: ${response.statusCode}');
+      debugPrint('Checkout session response body: ${response.body}');
+      
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return {
-          'success': true,
-          'url': data['url'] ?? '',
-          'message': data['message'] ?? '',
-        };
+        
+        // Check if response contains a Stripe URL
+        if (data.containsKey('url') && data['url'] != null && data['url'].toString().isNotEmpty) {
+          return {
+            'success': true,
+            'url': data['url'],
+            'message': data['message'] ?? '',
+          };
+        }
+        // Check if it's a Free Trial or already exists message
+        else if (data.containsKey('message')) {
+          return {
+            'success': true,
+            'url': null,
+            'message': data['message'],
+          };
+        }
+        // Fallback
+        else {
+          return {
+            'success': true,
+            'url': data['url'] ?? '',
+            'message': data['message'] ?? '',
+          };
+        }
       } else {
         final data = jsonDecode(response.body);
         return {
@@ -1910,13 +1935,15 @@ class ApiService {
     required String plan,
     double? latitude,
     double? longitude,
+    String? referrer,
   }) async {
     try {
       final body = {
         'email_': email,
         'plan': plan,
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
+        if (latitude != null) 'latitude': latitude.toString(),
+        if (longitude != null) 'longitude': longitude.toString(),
+        if (referrer != null) 'referrer': referrer,
       };
 
       final response = await http.post(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
+import '../constants/app_constants.dart';
+import '../utils/permission_utils.dart';
 import '../models/subscription_model.dart';
 import '../services/api_service.dart';
 
@@ -134,9 +136,23 @@ class SubscriptionService {
     if (email == null) return null;
 
     try {
+      // Validate plan name against backend supported plans
+      final validPlans = ['Free Trial', 'Pro Monthly', 'Pro Yearly', 'Gold Monthly', 'Gold Yearly'];
+      if (!validPlans.contains(plan)) {
+        debugPrint('Invalid plan name: $plan. Supported plans: $validPlans');
+        return null;
+      }
+
       // Get user location for pricing
       Position? position;
       try {
+        // Check and request location permission
+        bool hasPermission = await PermissionUtils.checkPermissionGranted(AppPermission.location);
+        if (!hasPermission) {
+          debugPrint('Location permission not granted, attempting to request...');
+          // Note: We can't request permission here without context, but we'll try to get location anyway
+          // The permission should be requested in the UI before calling this method
+        }
         position = await Geolocator.getCurrentPosition();
       } catch (e) {
         debugPrint('Could not get location: $e');
@@ -150,9 +166,23 @@ class SubscriptionService {
         referrer: referrer ?? 'https://app.einsteini.ai/pricing/',
       );
 
+      debugPrint('Checkout session result: $result');
+
       if (result['success'] == true) {
+        // Check if this is a Free Trial activation (no URL, just message)
+        if (result['url'] == null || result['url'].toString().isEmpty) {
+          final message = result['message'] ?? '';
+          if (message.contains('Free Trial Activated') || 
+              message.contains('Subscription already exists')) {
+            // For Free Trial, the backend doesn't return a URL but a success message
+            debugPrint('Free Trial handled successfully: $message');
+            return 'FREE_TRIAL_ACTIVATED'; // Special return value to indicate success
+          }
+        }
+        // Regular Stripe checkout session with URL
         return result['url'];
       } else {
+        
         debugPrint('Checkout session creation failed: ${result['message']}');
         return null;
       }
@@ -163,7 +193,7 @@ class SubscriptionService {
   }
 
   /// Upgrade subscription plan
-  Future<String?> upgradePlan(String plan) async {
+  Future<String?> upgradePlan(String plan, {String? referrer}) async {
     final email = await _getUserEmail();
     if (email == null) return null;
 
@@ -171,6 +201,13 @@ class SubscriptionService {
       // Get user location for pricing
       Position? position;
       try {
+        // Check and request location permission
+        bool hasPermission = await PermissionUtils.checkPermissionGranted(AppPermission.location);
+        if (!hasPermission) {
+          debugPrint('Location permission not granted, attempting to request...');
+          // Note: We can't request permission here without context, but we'll try to get location anyway
+          // The permission should be requested in the UI before calling this method
+        }
         position = await Geolocator.getCurrentPosition();
       } catch (e) {
         debugPrint('Could not get location: $e');
@@ -181,6 +218,7 @@ class SubscriptionService {
         plan: plan,
         latitude: position?.latitude,
         longitude: position?.longitude,
+        referrer: referrer ?? 'https://app.einsteini.ai/pricing/',
       );
 
       if (result['success'] == true) {

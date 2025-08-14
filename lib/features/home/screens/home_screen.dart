@@ -12,6 +12,7 @@ import 'package:einsteiniapp/features/home/widgets/history_tab.dart';
 import 'package:einsteiniapp/core/services/history_service.dart';
 import 'package:einsteiniapp/core/services/api_service.dart';
 import 'package:einsteiniapp/core/constants/app_constants.dart' as app_const;
+import 'package:einsteiniapp/core/constants/app_constants.dart' show AppPermission;
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -323,6 +324,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             onTap: () {
               Navigator.pop(context);
               context.push(AppRoutes.subscription);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.school_outlined),
+            title: const Text('Tutorial'),
+            onTap: () {
+              Navigator.pop(context);
+              context.push(AppRoutes.tutorial);
             },
           ),
           const Spacer(),

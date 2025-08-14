@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/terms_of_service.dart';
-import '../../../core/widgets/custom_app_bar.dart';
 
 class TermsOfServiceScreen extends StatelessWidget {
   const TermsOfServiceScreen({Key? key}) : super(key: key);
@@ -13,10 +12,10 @@ class TermsOfServiceScreen extends StatelessWidget {
     final isDarkMode = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: CustomAppBar(
-        title: TermsOfService.title,
-        showBackButton: true,
-        centerTitle: false,
+      appBar: AppBar(
+        title: const Text('Terms of Service'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: SafeArea(
         child: Padding(

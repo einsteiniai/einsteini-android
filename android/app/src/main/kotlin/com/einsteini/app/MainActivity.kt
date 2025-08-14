@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.text.TextUtils
 import android.util.Log
+import androidx.core.view.WindowCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
@@ -28,6 +29,20 @@ class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.einsteini.app/platform_channel"
     private val OVERLAY_CHANNEL = "com.einsteini.ai/overlay"
     private val executor = Executors.newFixedThreadPool(2)
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        // Enable edge-to-edge display for Android 15+ compatibility
+        try {
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+        } catch (e: Exception) {
+            Log.w("MainActivity", "Could not enable edge-to-edge", e)
+        }
+        
+        // Handle any intent that was used to start the activity
+        handleIntent(intent)
+    }
 
     // Helper method to check if dark mode is enabled
     private fun isDarkModeEnabled(): Boolean {
@@ -348,11 +363,6 @@ class MainActivity : FlutterActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handleIntent(intent)
-    }
-    
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         handleIntent(intent)
     }
     
