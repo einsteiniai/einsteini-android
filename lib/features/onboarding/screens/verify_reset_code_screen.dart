@@ -9,9 +9,9 @@ class VerifyResetCodeScreen extends StatefulWidget {
   final String email;
   
   const VerifyResetCodeScreen({
-    Key? key,
+    super.key,
     required this.email,
-  }) : super(key: key);
+  });
 
   @override
   State<VerifyResetCodeScreen> createState() => _VerifyResetCodeScreenState();

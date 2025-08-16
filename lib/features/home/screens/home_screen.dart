@@ -15,7 +15,7 @@ import 'package:einsteiniapp/core/constants/app_constants.dart' as app_const;
 import 'package:einsteiniapp/core/constants/app_constants.dart' show AppPermission;
 
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
@@ -234,7 +234,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         children: [
           DrawerHeader(
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceVariant,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -556,7 +556,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -616,7 +616,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         else if (_recentActivity.isEmpty)
           _buildEmptyRecentActivity()
         else
-          ..._recentActivity.map((post) => _buildRecentActivityCard(post)).toList(),
+          ..._recentActivity.map((post) => _buildRecentActivityCard(post)),
       ],
     );
   }

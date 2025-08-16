@@ -32,8 +32,6 @@ class AppTheme {
       onSecondary: Colors.white,
       surface: _lightSurfaceColor,
       onSurface: _lightTextColor,
-      background: _lightBackgroundColor,
-      onBackground: _lightTextColor,
       error: Colors.red,
       onError: Colors.white,
     ),
@@ -109,21 +107,21 @@ class AppTheme {
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ButtonStyle(
-        backgroundColor: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.disabled)) {
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
             return _primaryColor.withOpacity(0.5);
           }
           return _primaryColor;
         }),
-        foregroundColor: MaterialStateProperty.all(Colors.white),
-        iconColor: MaterialStateProperty.all(Colors.white),
-        textStyle: MaterialStateProperty.all(const TextStyle(
+        foregroundColor: WidgetStateProperty.all(Colors.white),
+        iconColor: WidgetStateProperty.all(Colors.white),
+        textStyle: WidgetStateProperty.all(const TextStyle(
           fontWeight: FontWeight.bold,
           fontFamily: _primaryFontFamily,
         )),
-        elevation: MaterialStateProperty.all(0),
-        padding: MaterialStateProperty.all(const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
-        shape: MaterialStateProperty.all(RoundedRectangleBorder(
+        elevation: WidgetStateProperty.all(0),
+        padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+        shape: WidgetStateProperty.all(RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         )),
       ),
@@ -170,7 +168,7 @@ class AppTheme {
     ),
     navigationBarTheme: const NavigationBarThemeData(
       indicatorColor: Color(0x1ABD79FF),
-      labelTextStyle: MaterialStatePropertyAll(
+      labelTextStyle: WidgetStatePropertyAll(
         TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,
@@ -190,8 +188,6 @@ class AppTheme {
       onSecondary: Colors.white,
       surface: _darkSurfaceColor,
       onSurface: _darkTextColor,
-      background: _darkBackgroundColor,
-      onBackground: _darkTextColor,
       error: Colors.redAccent,
       onError: Colors.white,
     ),
@@ -267,21 +263,21 @@ class AppTheme {
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ButtonStyle(
-        backgroundColor: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.disabled)) {
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
             return _primaryDarkColor.withOpacity(0.5);
           }
           return _primaryDarkColor;
         }),
-        foregroundColor: MaterialStateProperty.all(Colors.white),
-        iconColor: MaterialStateProperty.all(Colors.white),
-        textStyle: MaterialStateProperty.all(const TextStyle(
+        foregroundColor: WidgetStateProperty.all(Colors.white),
+        iconColor: WidgetStateProperty.all(Colors.white),
+        textStyle: WidgetStateProperty.all(const TextStyle(
           fontWeight: FontWeight.bold,
           fontFamily: _primaryFontFamily,
         )),
-        elevation: MaterialStateProperty.all(0),
-        padding: MaterialStateProperty.all(const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
-        shape: MaterialStateProperty.all(RoundedRectangleBorder(
+        elevation: WidgetStateProperty.all(0),
+        padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+        shape: WidgetStateProperty.all(RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         )),
       ),
@@ -328,7 +324,7 @@ class AppTheme {
     ),
     navigationBarTheme: NavigationBarThemeData(
       indicatorColor: _primaryDarkColor.withOpacity(0.2),
-      labelTextStyle: const MaterialStatePropertyAll(
+      labelTextStyle: const WidgetStatePropertyAll(
         TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,

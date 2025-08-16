@@ -20,9 +20,9 @@ class AuthScreen extends StatefulWidget {
   final bool isSignUp;
   
   const AuthScreen({
-    Key? key,
+    super.key,
     this.isSignUp = false,
-  }) : super(key: key);
+  });
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -106,7 +106,7 @@ class _AuthScreenState extends State<AuthScreen> {
       if (_isSignUp) {
         // Sign up flow
         result = await _apiService.signup(
-          name: _nameController.text.trim() + ' ' + _lastNameController.text.trim(),
+          name: '${_nameController.text.trim()} ${_lastNameController.text.trim()}',
           email: email,
           password: password,
         );
@@ -154,7 +154,7 @@ class _AuthScreenState extends State<AuthScreen> {
               // Mark tutorial as seen for future logins
               await prefs.setBool(AppConstants.hasSeenTutorialKey, true);
               // Navigate to tutorial with a flag indicating it's a new user
-              context.go(router.AppRoutes.tutorial + '?isNewUser=true');
+              context.go('${router.AppRoutes.tutorial}?isNewUser=true');
             } else {
               context.pushNamed(
                 'subscription',
@@ -169,7 +169,7 @@ class _AuthScreenState extends State<AuthScreen> {
               // Mark tutorial as seen for future logins
               await prefs.setBool(AppConstants.hasSeenTutorialKey, true);
               // Navigate to tutorial first
-              context.go(router.AppRoutes.tutorial + '?isNewUser=false');
+              context.go('${router.AppRoutes.tutorial}?isNewUser=false');
             } else {
               // Otherwise go straight to home
               context.go(router.AppRoutes.home);
@@ -657,7 +657,7 @@ class _AuthScreenState extends State<AuthScreen> {
           // Mark tutorial as seen for future logins
           await prefs.setBool(AppConstants.hasSeenTutorialKey, true);
           // Navigate to tutorial first
-          context.go(router.AppRoutes.tutorial + '?isNewUser=false');
+          context.go('${router.AppRoutes.tutorial}?isNewUser=false');
         } else {
           // Otherwise go straight to home
           context.go(router.AppRoutes.home);

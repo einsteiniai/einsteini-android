@@ -4,7 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/privacy_policy.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
-  const PrivacyPolicyScreen({Key? key}) : super(key: key);
+  const PrivacyPolicyScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

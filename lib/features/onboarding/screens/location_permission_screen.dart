@@ -10,7 +10,7 @@ import 'package:einsteiniapp/core/constants/app_constants.dart';
 import 'package:einsteiniapp/core/utils/toast_utils.dart';
 
 class LocationPermissionScreen extends StatefulWidget {
-  const LocationPermissionScreen({Key? key}) : super(key: key);
+  const LocationPermissionScreen({super.key});
 
   @override
   State<LocationPermissionScreen> createState() => _LocationPermissionScreenState();

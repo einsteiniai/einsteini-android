@@ -6,7 +6,7 @@ import 'package:einsteiniapp/core/routes/app_router.dart' as router;
 import 'package:einsteiniapp/core/widgets/app_logo.dart';
 
 class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({Key? key}) : super(key: key);
+  const WelcomeScreen({super.key});
 
   // Show terms and privacy policy dialog
   void _showTermsAndPrivacyDialog(BuildContext context) {

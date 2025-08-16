@@ -270,7 +270,7 @@ Future<String?> _checkOnboardingStatus(BuildContext context, GoRouterState state
 }
 
 class SplashScreen extends StatelessWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -303,7 +303,7 @@ class SplashScreen extends StatelessWidget {
 class MainAppScaffold extends ConsumerWidget {
   final Widget child;
 
-  const MainAppScaffold({Key? key, required this.child}) : super(key: key);
+  const MainAppScaffold({super.key, required this.child});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -336,7 +336,7 @@ class MainAppScaffold extends ConsumerWidget {
 }
 
 class AppDrawer extends StatelessWidget {
-  const AppDrawer({Key? key}) : super(key: key);
+  const AppDrawer({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -416,7 +416,7 @@ class AppDrawer extends StatelessWidget {
 }
 
 class ChatScreen extends StatelessWidget {
-  const ChatScreen({Key? key}) : super(key: key);
+  const ChatScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

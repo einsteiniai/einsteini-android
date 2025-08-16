@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:einsteiniapp/core/routes/app_router.dart' as router;
 
 class AccessibilityPermissionScreen extends StatefulWidget {
-  const AccessibilityPermissionScreen({Key? key}) : super(key: key);
+  const AccessibilityPermissionScreen({super.key});
 
   @override
   State<AccessibilityPermissionScreen> createState() => _AccessibilityPermissionScreenState();

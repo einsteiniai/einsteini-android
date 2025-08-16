@@ -4,7 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/terms_of_service.dart';
 
 class TermsOfServiceScreen extends StatelessWidget {
-  const TermsOfServiceScreen({Key? key}) : super(key: key);
+  const TermsOfServiceScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

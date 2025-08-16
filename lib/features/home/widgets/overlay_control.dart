@@ -4,7 +4,7 @@ import '../../../core/utils/permission_utils.dart';
 import '../../../core/utils/toast_utils.dart';
 
 class OverlayControl extends StatefulWidget {
-  const OverlayControl({Key? key}) : super(key: key);
+  const OverlayControl({super.key});
 
   @override
   OverlayControlState createState() => OverlayControlState();

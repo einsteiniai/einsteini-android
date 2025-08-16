@@ -9,14 +9,14 @@ import 'package:einsteiniapp/core/utils/toast_utils.dart';
 import '../widgets/overlay_control.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+  const SettingsScreen({super.key});
 
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  String _selectedTheme = 'System Default';
+  final String _selectedTheme = 'System Default';
   bool _notificationsEnabled = true;
   bool _dailyReminderEnabled = false;
   bool _autoStartEnabled = true;

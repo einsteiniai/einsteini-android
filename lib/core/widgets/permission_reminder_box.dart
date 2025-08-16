@@ -9,10 +9,10 @@ class PermissionReminderBox extends StatelessWidget {
   final VoidCallback? onDismiss;
 
   const PermissionReminderBox({
-    Key? key,
+    super.key,
     required this.permission,
     this.onDismiss,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

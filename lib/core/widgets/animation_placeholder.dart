@@ -8,12 +8,12 @@ class AnimationPlaceholder extends StatelessWidget {
   final BoxFit fit;
 
   const AnimationPlaceholder({
-    Key? key,
+    super.key,
     required this.animationPath,
     required this.height,
     this.width,
     this.fit = BoxFit.contain,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

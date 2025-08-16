@@ -10,10 +10,10 @@ class ResetPasswordScreen extends StatefulWidget {
   final String token;
   
   const ResetPasswordScreen({
-    Key? key,
+    super.key,
     required this.email,
     required this.token,
-  }) : super(key: key);
+  });
 
   @override
   State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();

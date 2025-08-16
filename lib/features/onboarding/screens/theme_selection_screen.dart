@@ -10,7 +10,7 @@ import 'package:einsteiniapp/core/widgets/app_logo.dart';
 import 'package:einsteiniapp/core/utils/toast_utils.dart';
 
 class ThemeSelectionScreen extends ConsumerStatefulWidget {
-  const ThemeSelectionScreen({Key? key}) : super(key: key);
+  const ThemeSelectionScreen({super.key});
 
   @override
   ConsumerState<ThemeSelectionScreen> createState() => _ThemeSelectionScreenState();

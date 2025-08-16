@@ -78,7 +78,7 @@ class AnalyzedPost {
     } else {
       // If no period found or too long, use first 50 chars
       return content.length > 50 
-        ? content.substring(0, 50) + '...' 
+        ? '${content.substring(0, 50)}...' 
         : content;
     }
   }

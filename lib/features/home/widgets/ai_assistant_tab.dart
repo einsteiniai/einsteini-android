@@ -10,7 +10,7 @@ import 'package:einsteiniapp/core/services/linkedin_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AIAssistantTab extends StatefulWidget {
-  const AIAssistantTab({Key? key}) : super(key: key);
+  const AIAssistantTab({super.key});
 
   @override
   AIAssistantTabState createState() => AIAssistantTabState();
@@ -1692,7 +1692,7 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
                   errorBuilder: (context, error, stackTrace) => Container(
                     height: 150,
                     width: double.infinity,
-                    color: Theme.of(context).colorScheme.surfaceVariant,
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     child: Center(
                       child: Icon(
                         Icons.broken_image,
@@ -2506,7 +2506,7 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(

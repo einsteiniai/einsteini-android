@@ -9,9 +9,9 @@ class VerifyAccountScreen extends StatefulWidget {
   final String email;
   
   const VerifyAccountScreen({
-    Key? key,
+    super.key,
     required this.email,
-  }) : super(key: key);
+  });
 
   @override
   State<VerifyAccountScreen> createState() => _VerifyAccountScreenState();

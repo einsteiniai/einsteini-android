@@ -11,11 +11,11 @@ class AppLogo extends StatelessWidget {
   final Color? backgroundColor;
 
   const AppLogo({
-    Key? key,
+    super.key,
     this.size = 50.0,
     this.padding = 8.0,
     this.backgroundColor,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -409,7 +409,7 @@ class ApiService {
       
       // Truncate to first 300 chars to avoid server errors
       if (cleanedContent.length > 300) {
-        cleanedContent = cleanedContent.substring(0, 300) + "...";
+        cleanedContent = "${cleanedContent.substring(0, 300)}...";
       }
       
       // Create a personalized prompt that includes tone and details
@@ -479,7 +479,7 @@ class ApiService {
       
       // Truncate to first 300 chars to avoid server errors
       if (cleanedContent.length > 300) {
-        cleanedContent = cleanedContent.substring(0, 300) + "...";
+        cleanedContent = "${cleanedContent.substring(0, 300)}...";
       }
       
       // Use a simple prompt format like the Chrome extension
@@ -694,7 +694,7 @@ class ApiService {
       debugPrint('Sending translation request to new /api/translate endpoint');
       
       // Use same format as the Chrome extension for translation
-      final prompt = "Translate this post to ${language} for this text: ${cleanedContent}";
+      final prompt = "Translate this post to $language for this text: $cleanedContent";
       
       // Use the same approach as we do for comments since that's working
       final response = await http.post(
@@ -1359,14 +1359,14 @@ class ApiService {
     if (titleMatch != null) {
       final title = titleMatch.group(1)?.trim() ?? '';
       if (title.isNotEmpty) {
-        cleanedContent += title + '\n\n';
+        cleanedContent += '$title\n\n';
       }
     }
     
     if (descMatch != null) {
       final desc = descMatch.group(1)?.trim() ?? '';
       if (desc.isNotEmpty) {
-        cleanedContent += desc + '\n\n';
+        cleanedContent += '$desc\n\n';
       }
     }
     

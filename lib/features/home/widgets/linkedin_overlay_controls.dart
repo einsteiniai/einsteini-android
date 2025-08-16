@@ -7,7 +7,7 @@ import '../../../core/utils/toast_utils.dart';
 
 /// Widget to provide LinkedIn AI features in the overlay
 class LinkedInOverlayControls extends StatefulWidget {
-  const LinkedInOverlayControls({Key? key}) : super(key: key);
+  const LinkedInOverlayControls({super.key});
 
   @override
   LinkedInOverlayControlsState createState() => LinkedInOverlayControlsState();

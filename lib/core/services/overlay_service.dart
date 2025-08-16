@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/linkedin_models.dart';
 import 'linkedin_service.dart';
 
 /// Service to manage the floating overlay window

@@ -7,9 +7,9 @@ class ThemeSwitcher extends ConsumerStatefulWidget {
   final Widget child;
   
   const ThemeSwitcher({
-    Key? key,
+    super.key,
     required this.child,
-  }) : super(key: key);
+  });
 
   @override
   ConsumerState<ThemeSwitcher> createState() => _ThemeSwitcherState();

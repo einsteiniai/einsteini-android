@@ -11,7 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:einsteiniapp/core/utils/permission_utils.dart' show PermissionUtils;
 
 class OverlayPermissionScreen extends StatefulWidget {
-  const OverlayPermissionScreen({Key? key}) : super(key: key);
+  const OverlayPermissionScreen({super.key});
 
   @override
   State<OverlayPermissionScreen> createState() => _OverlayPermissionScreenState();

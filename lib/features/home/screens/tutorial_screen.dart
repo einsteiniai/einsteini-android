@@ -3,7 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 class TutorialScreen extends StatefulWidget {
-  const TutorialScreen({Key? key}) : super(key: key);
+  const TutorialScreen({super.key});
 
   @override
   State<TutorialScreen> createState() => _TutorialScreenState();
@@ -215,7 +215,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                 Expanded(
                   child: LinearProgressIndicator(
                     value: (_currentPage + 1) / _tutorialSteps.length,
-                    backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                     valueColor: AlwaysStoppedAnimation<Color>(
                       Theme.of(context).colorScheme.primary,
                     ),
@@ -381,7 +381,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                 duration: 600.ms, 
                 delay: Duration(milliseconds: 800 + (index * 100)),
               );
-            }).toList(),
+            }),
           ],
         ],
       ),

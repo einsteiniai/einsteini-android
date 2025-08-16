@@ -8,7 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 class HistoryTab extends StatefulWidget {
   final Function(AnalyzedPost)? onReanalyzePost;
   
-  const HistoryTab({Key? key, this.onReanalyzePost}) : super(key: key);
+  const HistoryTab({super.key, this.onReanalyzePost});
 
   @override
   State<HistoryTab> createState() => _HistoryTabState();

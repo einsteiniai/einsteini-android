@@ -16,7 +16,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showSettingsButton;
 
   const CustomAppBar({
-    Key? key,
+    super.key,
     required this.title,
     this.actions,
     this.showBackButton = false,
@@ -28,7 +28,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.backgroundColor,
     this.flexibleSpace,
     this.showSettingsButton = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
