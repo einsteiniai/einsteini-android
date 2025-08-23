@@ -41,8 +41,8 @@ android {
         applicationId = "com.einsteini.app"
         minSdk = 23 // Ensure compatibility
         targetSdk = 35 // Updated to target API level 35 for Play Store requirement
-        versionCode = 19
-        versionName = "2.2.2"
+    versionCode = 20
+    versionName = "2.2.3"
         
         // Add this for flutter_appauth
         manifestPlaceholders += [

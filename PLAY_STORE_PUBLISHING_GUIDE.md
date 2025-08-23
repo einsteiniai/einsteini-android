@@ -85,10 +85,10 @@ The app uses a signing key stored in `android/einsteini-keystore.jks`.
 
 ### 2. Version Management
 
-Current version in `pubspec.yaml`: `2.2.2+19`
+Current version in `pubspec.yaml`: `2.2.3+20`
 
 **Version Format**: `MAJOR.MINOR.PATCH+BUILD_NUMBER`
-- **2.2.2**: User-visible version (versionName)
+- **2.2.3**: User-visible version (versionName)
 - **19**: Internal build number (versionCode) - must increment with each release
 
 ---
@@ -425,7 +425,7 @@ Data Security:
 ### 3. Release Notes Template
 
 ```markdown
-🚀 What's New in Einsteini v2.2.2
+🚀 What's New in Einsteini v2.2.3
 
 ✨ NEW FEATURES
 • Enhanced AI content generation with improved accuracy
@@ -520,7 +520,7 @@ FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
 ### 2. Version Numbering Strategy
 
 ```
-Current: 2.2.2+19
+Current: 2.2.3+20
 Next:    2.2.3+20 (Bug fix update)
 Next:    2.3.0+21 (Minor feature update)
 Next:    3.0.0+22 (Major feature update)

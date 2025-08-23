@@ -200,6 +200,19 @@ class EinsteiniOverlayService : Service() {
         super.onCreate()
         Log.d("EinsteiniOverlay", "Service onCreate")
         
+        // Create notification channel for Android O and above
+        createNotificationChannel()
+        
+        // Start as foreground service with notification IMMEDIATELY
+        // This must be called within 5 seconds of service creation to avoid ForegroundServiceDidNotStartInTimeException
+        try {
+            startForeground(NOTIFICATION_ID, createNotification())
+        } catch (e: Exception) {
+            Log.e("EinsteiniOverlay", "Failed to start as foreground service", e)
+            // Continue anyway, as we might still be able to show the overlay
+            // even if the foreground service fails
+        }
+        
         try {
             // Apply the Material Components theme for proper styling
             // We don't set the theme directly on the service as it doesn't work that way
@@ -220,18 +233,6 @@ class EinsteiniOverlayService : Service() {
             // Update instance and running state
             instance = this
             running = true
-            
-            // Create notification channel for Android O and above
-            createNotificationChannel()
-            
-            // Start as foreground service with notification
-            try {
-                startForeground(NOTIFICATION_ID, createNotification())
-            } catch (e: Exception) {
-                Log.e("EinsteiniOverlay", "Failed to start as foreground service", e)
-                // Continue anyway, as we might still be able to show the overlay
-                // even if the foreground service fails
-            }
             
             // Setup components in sequence, with error handling for each
             try {
@@ -3288,4 +3289,4 @@ class EinsteiniOverlayService : Service() {
             }
         }
     }
-} 
+}

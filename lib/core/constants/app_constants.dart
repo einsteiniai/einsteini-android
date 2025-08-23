@@ -3,7 +3,7 @@ class AppConstants {
   // App Info
   static const String appName = 'einsteini.ai';
   static const String appDescription = 'LinkedIn engagement assistant powered by AI';
-  static const String appVersion = '2.2.2';
+  static const String appVersion = '2.2.3';
   static const String appTagline = 'Effortlessly human.';
   
   // Routes
