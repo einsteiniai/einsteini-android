@@ -28,10 +28,10 @@ class PermissionUtils {
     return false;
   }
   
-  static Future<void> openOverlaySettings() async {
+  static Future<void> openOverlaySettings(BuildContext context) async {
     if (Platform.isAndroid) {
-      // Direct way to open "Display over other apps" settings
-      await PlatformChannel.openOverlayPermissionSettings();
+      // Use MethodChannel to launch native OverlayPermissionActivity
+      await PlatformChannel.openOverlayPermissionActivity();
     } else if (Platform.isIOS) {
       await openAppSettings();
     }
@@ -237,7 +237,7 @@ class PermissionUtils {
       case AppPermission.overlay:
         final isGranted = await requestOverlayPermission();
         if (!isGranted) {
-          await openOverlaySettings();
+          await openOverlaySettings(context);
           showOverlayPermissionInstructions(context);
           return false;
         }
@@ -302,4 +302,4 @@ class PermissionUtils {
       ),
     );
   }
-} 
+}

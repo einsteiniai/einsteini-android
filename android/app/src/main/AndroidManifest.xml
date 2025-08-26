@@ -86,13 +86,6 @@
                     android:host="oauth"
                     android:path="/linkedin" />
             </intent-filter>
-            
-            <!-- Handle share intents from LinkedIn and other apps -->
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-            </intent-filter>
         </activity>
         <!-- Comment out the accessibility service -->
         <!--
@@ -123,6 +116,26 @@
                 android:name="android.app.foreground_service_type_data_sync"
                 android:value="true" />
         </service>
+        
+        <activity
+            android:name=".OverlayShareActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+        
+        <activity
+            android:name=".OverlayPermissionActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask" />
         
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

@@ -13,16 +13,16 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.einsteini.app"
-    compileSdk = 35 // Update to required SDK version
+    compileSdk = 36 // Updated to required SDK version
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11
+    jvmTarget = JavaVersion.VERSION_17
     }
     
     // Enable lint checks for security
@@ -39,10 +39,10 @@ android {
 
     defaultConfig {
         applicationId = "com.einsteini.app"
-        minSdk = 23 // Ensure compatibility
-        targetSdk = 35 // Updated to target API level 35 for Play Store requirement
-    versionCode = 20
-    versionName = "2.2.3"
+        minSdkVersion flutter.minSdkVersion // Ensure compatibility
+        targetSdk = 36 // Updated to target API level 36 for Play Store requirement
+    versionCode = 22
+    versionName = "3.0.0"
         
         // Add this for flutter_appauth
         manifestPlaceholders += [

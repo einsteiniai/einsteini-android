@@ -60,4 +60,7 @@
     <!-- Privacy Policy and Terms -->
     <string name="privacy_policy_title">Privacy Policy</string>
     <string name="terms_of_service_title">Terms of Service</string>
-</resources> 
+    
+    <!-- Google Sign-In -->
+    <!-- <string name="server_client_id">940646244947-ud4dcdvfntku6j8ccfk8t66j50qle5k2.apps.googleusercontent.com</string> -->
+</resources>

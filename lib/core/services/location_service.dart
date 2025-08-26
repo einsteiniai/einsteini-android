@@ -29,12 +29,12 @@ class LocationService {
         return _cachedCountry!;
       }
 
-      // Get current position
+      // Get current position using latest geolocator API
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.low,
         timeLimit: const Duration(seconds: 10),
       );
-
+      // If you encounter platform errors, ensure geolocator_android is updated in pubspec.yaml and pubspec.lock
       print('LocationService: Got position - lat: ${position.latitude}, lon: ${position.longitude}');
 
       // Get country info from backend

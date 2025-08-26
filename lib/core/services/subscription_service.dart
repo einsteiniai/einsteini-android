@@ -150,10 +150,11 @@ class SubscriptionService {
         bool hasPermission = await PermissionUtils.checkPermissionGranted(AppPermission.location);
         if (!hasPermission) {
           debugPrint('Location permission not granted, attempting to request...');
-          // Note: We can't request permission here without context, but we'll try to get location anyway
-          // The permission should be requested in the UI before calling this method
         }
-        position = await Geolocator.getCurrentPosition();
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.low,
+          timeLimit: const Duration(seconds: 10),
+        );
       } catch (e) {
         debugPrint('Could not get location: $e');
       }
@@ -205,10 +206,11 @@ class SubscriptionService {
         bool hasPermission = await PermissionUtils.checkPermissionGranted(AppPermission.location);
         if (!hasPermission) {
           debugPrint('Location permission not granted, attempting to request...');
-          // Note: We can't request permission here without context, but we'll try to get location anyway
-          // The permission should be requested in the UI before calling this method
         }
-        position = await Geolocator.getCurrentPosition();
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.low,
+          timeLimit: const Duration(seconds: 10),
+        );
       } catch (e) {
         debugPrint('Could not get location: $e');
       }

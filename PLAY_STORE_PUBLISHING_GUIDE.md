@@ -85,11 +85,11 @@ The app uses a signing key stored in `android/einsteini-keystore.jks`.
 
 ### 2. Version Management
 
-Current version in `pubspec.yaml`: `2.2.3+20`
+Current version in `pubspec.yaml`: `3.0.0+22`
 
 **Version Format**: `MAJOR.MINOR.PATCH+BUILD_NUMBER`
-- **2.2.3**: User-visible version (versionName)
-- **19**: Internal build number (versionCode) - must increment with each release
+- **3.0.0**: User-visible version (versionName)
+- **22**: Internal build number (versionCode) - must increment with each release
 
 ---
 
@@ -425,27 +425,23 @@ Data Security:
 ### 3. Release Notes Template
 
 ```markdown
-🚀 What's New in Einsteini v2.2.3
+🚀 What's New in Einsteini v3.0.0
 
 ✨ NEW FEATURES
-• Enhanced AI content generation with improved accuracy
-• New LinkedIn post templates for better engagement
-• Dark mode improvements and better accessibility
+• Direct LinkedIn post sharing from AI-generated content
+• About Me generator with backend integration
+• New Post/Repost tab switcher UI
 
 🛠 IMPROVEMENTS
-• Faster app startup time (30% improvement)
-• Better overlay positioning on Android 13+
-• Improved subscription flow and payment processing
+• Updated UI colors and versioning
+• Improved backend integration and error handling
 
 🐛 BUG FIXES
-• Fixed crash when generating content on some devices
-• Resolved overlay permission issues on Samsung devices
-• Fixed theme switching inconsistencies
+• Fixed tab switcher state persistence
+• Resolved versioning and build issues
 
 🔐 PRIVACY & SECURITY
-• Enhanced data encryption for better privacy
-• Updated privacy policy with clearer language
-• Improved secure storage implementation
+• No new changes
 
 Download now to experience the latest improvements!
 ```
@@ -520,8 +516,8 @@ FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
 ### 2. Version Numbering Strategy
 
 ```
-Current: 2.2.3+20
-Next:    2.2.3+20 (Bug fix update)
+Current: 2.2.4+21
+Next:    2.2.4+21 (Bug fix update)
 Next:    2.3.0+21 (Minor feature update)
 Next:    3.0.0+22 (Major feature update)
 ```
@@ -538,7 +534,7 @@ Next:    3.0.0+22 (Major feature update)
 
 ```bash
 # 1. Update version
-# Edit pubspec.yaml: version: 2.2.3+20
+# Edit pubspec.yaml: version: 2.2.4+21
 
 # 2. Update changelog
 # Edit CHANGELOG.md with new version details

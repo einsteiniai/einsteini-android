@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:einsteiniapp/core/utils/toast_utils.dart';
 import 'package:einsteiniapp/core/utils/platform_channel.dart';
 import 'package:einsteiniapp/core/services/history_service.dart';
@@ -8,6 +7,7 @@ import 'dart:async';
 import 'package:uuid/uuid.dart';
 import 'package:einsteiniapp/core/services/linkedin_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:einsteiniapp/core/services/api_service.dart';
 
 class AIAssistantTab extends StatefulWidget {
   const AIAssistantTab({super.key});
@@ -539,28 +539,27 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
       ToastUtils.showErrorToast('Please fill in all fields');
       return;
     }
-    
+
     setState(() {
       _isGeneratingAboutMe = true;
     });
-    
-    // Simulate API call delay
-    Future.delayed(const Duration(seconds: 2), () {
+
+    ApiService().createAboutMe(
+      industry: _industryController.text,
+      experience: _experienceController.text,
+      skills: _skillsController.text,
+      goal: _goalController.text,
+    ).then((aboutMe) {
       setState(() {
         _isGeneratingAboutMe = false;
-        _generatedAboutMe = '''
-👋 Results-driven ${_industryController.text} professional with ${_experienceController.text} of experience driving strategic initiatives and delivering measurable outcomes.
-
-💼 My expertise includes ${_skillsController.text}, with a proven track record of helping organizations achieve their business objectives through innovative solutions.
-
-🚀 Passionate about ${_goalController.text}, I combine analytical thinking with creative problem-solving to tackle complex challenges.
-
-💡 I thrive in collaborative environments and enjoy mentoring teams to reach their full potential. Always seeking opportunities to learn, grow, and make an impact.
-
-🔗 Let's connect to explore how we might work together to achieve remarkable results!
-''';
+        _generatedAboutMe = aboutMe;
       });
       ToastUtils.showSuccessToast('About Me generated successfully');
+    }).catchError((error) {
+      setState(() {
+        _isGeneratingAboutMe = false;
+      });
+      ToastUtils.showErrorToast('Failed to generate About Me');
     });
   }
 
@@ -660,190 +659,433 @@ What strategies have worked well for you in the ${_postTopicController.text.toLo
   Widget _buildCreatePostTab() {
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
     
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Create AI-Powered LinkedIn Posts',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        
-        const SizedBox(height: 8),
-        
-        Text(
-          'Enter details below to generate engaging LinkedIn posts',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        
-        const SizedBox(height: 24),
-        
-        SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
-          padding: EdgeInsets.only(bottom: keyboardVisible ? 200 : 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Topic input
-              _buildInputField(
-                label: 'Post Topic',
-                hintText: 'e.g., Digital Marketing, Leadership, Tech Trends',
-                controller: _postTopicController,
-                icon: Icons.topic,
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Tone selection
-              _buildDropdownField(
-                label: 'Content Tone',
-                hintText: 'Select the tone for your post',
-                controller: _postToneController,
-                icon: Icons.mood,
-                options: ['Professional', 'Friendly', 'Inspirational', 'Educational', 'Thought-Provoking'],
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Length selection
-              _buildDropdownField(
-                label: 'Post Length',
-                hintText: 'Select the length of your post',
-                controller: _postLengthController,
-                icon: Icons.format_size,
-                options: ['Short', 'Medium', 'Long'],
-              ),
-              
-              const SizedBox(height: 24),
-              
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isGeneratingPost ? null : _generatePost,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+  // Removed duplicate keyboardVisible declaration
+        bool isNewPost = true;
+        String _generatedRepost = '';
+        bool _isGeneratingRepost = false;
+        final repostUrlController = TextEditingController();
+        final repostToneController = TextEditingController(text: 'Professional');
+        final repostLengthController = TextEditingController(text: 'Medium');
+        final api = ApiService();
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Create AI-Powered LinkedIn Posts',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
-                  child: _isGeneratingPost
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Generate Post'),
                 ),
-              ),
-              
-              if (_generatedPost.isNotEmpty) ...[
-                const SizedBox(height: 24),
-                
-                // Generated post
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(25),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => isNewPost = true),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isNewPost ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            child: Text(
+                              'New Post',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: isNewPost ? Colors.white : Colors.black,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => isNewPost = false),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: !isNewPost ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            child: Text(
+                              'Repost',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: !isNewPost ? Colors.white : Colors.black,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                if (isNewPost)
+                  SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    padding: EdgeInsets.only(bottom: keyboardVisible ? 200 : 32),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: Theme.of(context).colorScheme.primary,
-                              radius: 16,
-                              child: const Icon(
-                                Icons.auto_awesome,
-                                size: 16,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'AI-Generated Post',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
+                        _buildInputField(
+                          label: 'Post Topic',
+                          hintText: 'e.g., Digital Marketing, Leadership, Tech Trends',
+                          controller: _postTopicController,
+                          icon: Icons.topic,
                         ),
-                        
                         const SizedBox(height: 16),
-                        
-                        Text(
-                          _generatedPost,
-                          style: Theme.of(context).textTheme.bodyLarge,
+                        _buildDropdownField(
+                          label: 'Content Tone',
+                          hintText: 'Select the tone for your post',
+                          controller: _postToneController,
+                          icon: Icons.mood,
+                          options: ['Professional', 'Friendly', 'Inspirational', 'Educational', 'Thought-Provoking'],
                         ),
-                        
                         const SizedBox(height: 16),
-                        
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            OutlinedButton.icon(
-                              onPressed: () {
-                                Clipboard.setData(ClipboardData(text: _generatedPost)).then((_) {
-                                  ToastUtils.showSuccessToast('Post copied to clipboard');
-                                });
-                              },
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              icon: const Icon(Icons.copy, size: 16),
-                              label: const Text('Copy'),
-                            ),
-                            
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                // In a real app, this would open the LinkedIn app with the post pre-filled
-                                ToastUtils.showInfoToast('This would open LinkedIn with this post');
-                              },
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                iconColor: Colors.white, // Explicitly set icon color
-                              ),
-                              icon: const Icon(Icons.send, size: 16, color: Colors.white),
-                              label: const Text('Post to LinkedIn'),
-                            ),
-                          ],
+                        _buildDropdownField(
+                          label: 'Post Length',
+                          hintText: 'Select the length of your post',
+                          controller: _postLengthController,
+                          icon: Icons.format_size,
+                          options: ['Short', 'Medium', 'Long'],
                         ),
-                        
-                        const SizedBox(height: 12),
-                        
-                        OutlinedButton.icon(
-                          onPressed: _generatePost,
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            minimumSize: const Size(double.infinity, 0),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _isGeneratingPost ? null : () async {
+                              if (_postTopicController.text.isEmpty) {
+                                ToastUtils.showErrorToast('Please enter a topic for your post');
+                                return;
+                              }
+                              setState(() => _isGeneratingPost = true);
+                              // api is already instantiated above
+                              final post = await api.createPost(
+                                topic: _postTopicController.text,
+                                tone: _postToneController.text,
+                                length: _postLengthController.text,
+                              );
+                              setState(() {
+                                _isGeneratingPost = false;
+                                _generatedPost = post;
+                              });
+                              ToastUtils.showSuccessToast('Post generated successfully');
+                            },
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: _isGeneratingPost
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('Generate Post'),
+                          ),
+                        ),
+                        if (_generatedPost.isNotEmpty) ...[
+                          const SizedBox(height: 24),
+                          Card(
+                            elevation: 2,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundColor: Theme.of(context).colorScheme.primary,
+                                        radius: 16,
+                                        child: const Icon(
+                                          Icons.auto_awesome,
+                                          size: 16,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'AI-Generated Post',
+                                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    _generatedPost,
+                                    style: Theme.of(context).textTheme.bodyLarge,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      OutlinedButton.icon(
+                                        onPressed: () {
+                                          Clipboard.setData(ClipboardData(text: _generatedPost)).then((_) {
+                                            ToastUtils.showSuccessToast('Post copied to clipboard');
+                                          });
+                                        },
+                                        style: OutlinedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                        icon: const Icon(Icons.copy, size: 16),
+                                        label: const Text('Copy'),
+                                      ),
+                                      ElevatedButton.icon(
+                                        onPressed: () async {
+                                          try {
+                                            await PlatformChannel.shareToLinkedIn(_generatedPost);
+                                          } catch (e) {
+                                            ToastUtils.showErrorToast('Could not open LinkedIn: $e');
+                                          }
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          iconColor: Colors.white,
+                                        ),
+                                        icon: const Icon(Icons.send, size: 16, color: Colors.white),
+                                        label: const Text('Post to LinkedIn'),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  OutlinedButton.icon(
+                                    onPressed: () async {
+                                      setState(() => _isGeneratingPost = true);
+                                      // api is already instantiated above
+                                      final post = await api.createPost(
+                                        topic: _postTopicController.text,
+                                        tone: _postToneController.text,
+                                        length: _postLengthController.text,
+                                      );
+                                      setState(() {
+                                        _isGeneratingPost = false;
+                                        _generatedPost = post;
+                                      });
+                                      ToastUtils.showSuccessToast('Post generated successfully');
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 8),
+                                      minimumSize: const Size(double.infinity, 0),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    icon: const Icon(Icons.refresh, size: 16),
+                                    label: const Text('Generate Another Version'),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          icon: const Icon(Icons.refresh, size: 16),
-                          label: const Text('Generate Another Version'),
+                        ],
+                      ],
+                    ),
+                  )
+                else
+                  SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    padding: EdgeInsets.only(bottom: keyboardVisible ? 200 : 32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildInputField(
+                          label: 'Post URL',
+                          hintText: 'e.g., https://www.linkedin.com/posts/xyz',
+                          controller: repostUrlController,
+                          icon: Icons.link,
                         ),
+                        const SizedBox(height: 16),
+                        _buildDropdownField(
+                          label: 'Content Tone',
+                          hintText: 'Select the tone for your repost',
+                          controller: repostToneController,
+                          icon: Icons.mood,
+                          options: ['Professional', 'Friendly', 'Inspirational', 'Educational', 'Thought-Provoking'],
+                        ),
+                        const SizedBox(height: 16),
+                        _buildDropdownField(
+                          label: 'Repost Length',
+                          hintText: 'Select the length of your repost',
+                          controller: repostLengthController,
+                          icon: Icons.format_size,
+                          options: ['Short', 'Medium', 'Long'],
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _isGeneratingRepost ? null : () async {
+                              if (repostUrlController.text.isEmpty) {
+                                ToastUtils.showErrorToast('Please enter the LinkedIn post URL');
+                                return;
+                              }
+                              setState(() => _isGeneratingRepost = true);
+                              // api is already instantiated above
+                              final repost = await api.createRepost(
+                                url: repostUrlController.text,
+                                tone: repostToneController.text,
+                                length: repostLengthController.text,
+                              );
+                              setState(() {
+                                _isGeneratingRepost = false;
+                                _generatedRepost = repost;
+                              });
+                              ToastUtils.showSuccessToast('Repost generated successfully');
+                            },
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: _isGeneratingRepost
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('Generate Repost'),
+                          ),
+                        ),
+                        if (_generatedRepost.isNotEmpty) ...[
+                          const SizedBox(height: 24),
+                          Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundColor: Theme.of(context).colorScheme.primary,
+                                        radius: 16,
+                                        child: const Icon(
+                                          Icons.repeat,
+                                          size: 16,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'AI-Generated Repost',
+                                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    _generatedRepost,
+                                    style: Theme.of(context).textTheme.bodyLarge,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      OutlinedButton.icon(
+                                        onPressed: () {
+                                          Clipboard.setData(ClipboardData(text: _generatedRepost)).then((_) {
+                                            ToastUtils.showSuccessToast('Repost copied to clipboard');
+                                          });
+                                        },
+                                        style: OutlinedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                        icon: const Icon(Icons.copy, size: 16),
+                                        label: const Text('Copy'),
+                                      ),
+                                      ElevatedButton.icon(
+                                        onPressed: () {
+                                          ToastUtils.showInfoToast('This would open LinkedIn with this repost');
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          iconColor: Colors.white,
+                                        ),
+                                        icon: const Icon(Icons.send, size: 16, color: Colors.white),
+                                        label: const Text('Post to LinkedIn'),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  OutlinedButton.icon(
+                                    onPressed: () async {
+                                      setState(() => _isGeneratingRepost = true);
+                                      // api is already instantiated above
+                                      final repost = await api.createRepost(
+                                        url: repostUrlController.text,
+                                        tone: repostToneController.text,
+                                        length: repostLengthController.text,
+                                      );
+                                      setState(() {
+                                        _isGeneratingRepost = false;
+                                        _generatedRepost = repost;
+                                      });
+                                      ToastUtils.showSuccessToast('Repost generated successfully');
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 8),
+                                      minimumSize: const Size(double.infinity, 0),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    icon: const Icon(Icons.refresh, size: 16),
+                                    label: const Text('Generate Another Version'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
-                ),
               ],
-            ],
-          ),
-        ),
-      ],
-    );
+            );
+          },
+        );
   }
   
   // About Me Tab

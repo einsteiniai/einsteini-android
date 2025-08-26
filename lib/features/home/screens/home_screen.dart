@@ -861,7 +861,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             Switch(
               value: _overlayEnabled,
               onChanged: _toggleOverlay,
-              activeColor: Theme.of(context).colorScheme.primary,
+              activeThumbColor: Theme.of(context).colorScheme.primary,
             ),
           ],
         ),

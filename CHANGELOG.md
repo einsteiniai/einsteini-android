@@ -20,7 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
-## [2.2.3] - 2025-08-23
+## [2.2.4] - 2025-08-24
 
 ### Added
 - Enhanced AI content generation with improved accuracy

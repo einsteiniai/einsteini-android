@@ -13,8 +13,32 @@
 </div>
 
 ---
+## 🆕 Current Version
 
-## 📋 Table of Contents
+**Version:** 3.0.0+22
+
+## � Release Notes
+
+### v3.0.0
+✨ NEW FEATURES
+• Direct LinkedIn post sharing from AI-generated content
+• About Me generator with backend integration
+• New Post/Repost tab switcher UI
+
+🛠 IMPROVEMENTS
+• Updated UI colors and versioning
+• Improved backend integration and error handling
+
+🐛 BUG FIXES
+• Fixed tab switcher state persistence
+• Resolved versioning and build issues
+
+🔐 PRIVACY & SECURITY
+• No new changes
+
+Download now to experience the latest improvements!
+
+## �📋 Table of Contents
 
 - [About](#-about)
 - [Features](#-features)
@@ -443,11 +467,12 @@ Help us track:
 - **🔗 Platform Expansion**: Twitter/X and Instagram integration
 - **🎯 Smart Scheduling**: AI-powered optimal posting times
 
-### 🌟 Version 3.0.0 (Q3 2025)
-- **🤝 Team Collaboration**: Multi-user accounts and shared workspaces
-- **📈 Advanced Analytics**: Engagement tracking and ROI metrics
-- **🎪 Content Calendar**: Editorial calendar with AI suggestions
-- **🌍 Global Expansion**: Support for 50+ languages
+### 🌟 Version 3.0.0 (Current Release)
+- **Direct LinkedIn post sharing from AI-generated content**
+- **About Me generator with backend integration**
+- **New Post/Repost tab switcher UI**
+- **UI and backend improvements**
+- **Bug fixes and stability enhancements**
 
 ### 🔮 Future Vision (Q4 2025+)
 - **🧠 Advanced AI**: Custom fine-tuned models for users

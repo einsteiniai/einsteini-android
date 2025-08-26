@@ -6,8 +6,18 @@ import 'package:einsteiniapp/core/services/linkedin_service.dart';
 
 /// Utility class to handle platform-specific operations
 class PlatformChannel {
+  /// Share content to LinkedIn using Android intent
+  static Future<void> shareToLinkedIn(String content) async {
+    try {
+      await _platformChannel.invokeMethod('shareToLinkedIn', {'content': content});
+    } on PlatformException catch (e) {
+      print('Failed to share to LinkedIn: ${e.message}');
+      rethrow;
+    }
+  }
   static const MethodChannel _channel = MethodChannel('com.einsteini.ai/settings');
   static const MethodChannel _overlayChannel = MethodChannel('com.einsteini.ai/overlay');
+  static const MethodChannel _platformChannel = MethodChannel('einsteini/platform');
   static final ApiService _apiService = ApiService();
   static final LinkedInService _linkedInService = LinkedInService();
   
@@ -188,4 +198,14 @@ class PlatformChannel {
       return false;
     }
   }
-} 
+
+  /// Launches native OverlayPermissionActivity for overlay permission
+  static Future<void> openOverlayPermissionActivity() async {
+    try {
+      await _platformChannel.invokeMethod('openOverlayPermissionActivity');
+    } on PlatformException catch (e) {
+      print('Failed to open overlay permission activity: ${e.message}');
+      rethrow;
+    }
+  }
+}

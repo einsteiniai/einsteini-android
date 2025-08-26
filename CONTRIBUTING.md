@@ -678,7 +678,7 @@ What actually happened.
 
 - Device: [e.g. Samsung Galaxy S21]
 - OS: [e.g. Android 12]
-- App Version: [e.g. 2.2.3]
+- App Version: [e.g. 2.2.4]
 - Flutter Version: [e.g. 3.6.0]
 
 ## 📷 Screenshots

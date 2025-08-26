@@ -42,9 +42,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final ApiService _apiService = ApiService();
   
   // Social login requirements
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email', 'profile'],
-  );
+  final List<String> _googleScopes = ['email', 'profile'];
   
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   
@@ -691,25 +689,23 @@ class _AuthScreenState extends State<AuthScreen> {
   
   Future<Map<String, dynamic>> _signInWithGoogle() async {
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      
+      final signIn = GoogleSignIn.instance;
+      await signIn.initialize(serverClientId: '940646244947-ud4dcdvfntku6j8ccfk8t66j50qle5k2.apps.googleusercontent.com');
+      GoogleSignInAccount? googleUser;
+      if (signIn.supportsAuthenticate()) {
+        googleUser = await signIn.authenticate();
+      }
       if (googleUser == null) {
         return {
           'success': false,
-          'error': 'Sign in cancelled by user'
+          'error': 'Sign in cancelled by user or not authenticated.'
         };
       }
-      
-      // Get auth details from request
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      
-      // Store the token securely
-      await _secureStorage.write(key: 'google_access_token', value: googleAuth.accessToken);
+      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
       await _secureStorage.write(key: 'google_id_token', value: googleAuth.idToken);
-      
       return {
         'success': true,
-        'token': googleAuth.idToken ?? googleAuth.accessToken ?? '',
+        'token': googleAuth.idToken ?? '',
         'name': googleUser.displayName ?? '',
         'email': googleUser.email,
         'photoUrl': googleUser.photoUrl,
@@ -726,7 +722,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<Map<String, dynamic>> _signInWithMicrosoft() async {
     try {
       // Use AppAuth to authenticate with Microsoft
-      final AuthorizationTokenResponse? result = await _appAuth.authorizeAndExchangeCode(
+      final AuthorizationTokenResponse result = await _appAuth.authorizeAndExchangeCode(
         AuthorizationTokenRequest(
           _microsoftClientId,
           _microsoftRedirectUrl,
@@ -737,13 +733,6 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
         ),
       );
-      
-      if (result == null) {
-        return {
-          'success': false,
-          'error': 'Microsoft sign in failed'
-        };
-      }
       
       // Store tokens securely
       await _secureStorage.write(key: 'microsoft_access_token', value: result.accessToken);
@@ -884,4 +873,4 @@ class _AuthScreenState extends State<AuthScreen> {
       };
     }
   }
-} 
+}

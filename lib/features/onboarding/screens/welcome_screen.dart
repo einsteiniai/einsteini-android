@@ -56,7 +56,7 @@ class WelcomeScreen extends StatelessWidget {
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.primary,
                           fontWeight: FontWeight.bold,
-                          decoration: TextDecoration.underline,
+                          decoration: TextDecoration.none,
                         ),
                       ),
                     ],
@@ -84,7 +84,7 @@ class WelcomeScreen extends StatelessWidget {
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.primary,
                           fontWeight: FontWeight.bold,
-                          decoration: TextDecoration.underline,
+                          decoration: TextDecoration.none,
                         ),
                       ),
                     ],
@@ -262,4 +262,4 @@ class WelcomeScreen extends StatelessWidget {
       ],
     );
   }
-} 
+}

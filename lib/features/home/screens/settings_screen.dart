@@ -16,7 +16,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  final String _selectedTheme = 'System Default';
   bool _notificationsEnabled = true;
   bool _dailyReminderEnabled = false;
   bool _autoStartEnabled = true;
@@ -28,11 +27,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isOverlayServiceEnabled = false;
   
   // Define state variables for loading states
-  bool _isRefreshingLinkedIn = false;
-  bool _isClearingCache = false;
-  bool _isDeletingAccount = false;
-  bool _isReconnectingLinkedIn = false;
-  bool _isUpdatingLinkedIn = false;
   
   // Time pickers
   TimeOfDay _morningReminderTime = const TimeOfDay(hour: 9, minute: 0);
@@ -263,7 +257,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: const Text('Delete Account'),
             trailing: const Icon(Icons.delete_forever, color: Colors.red),
             onTap: () {
-              _initiateAccountDeletion();
+              _deleteAccount();
             },
           ),
           const Divider(),
@@ -636,7 +630,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
   
   void _showNotificationScheduleDialog() {
-    final TimeOfDay initialTime = TimeOfDay.now();
     
     showDialog(
       context: context,
@@ -768,112 +761,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
   
   void _refreshLinkedInConnection() {
-    // Simulate refreshing connection
-    setState(() {
-      _isRefreshingLinkedIn = true;
-    });
-    
     // Simulate network delay
     Future.delayed(const Duration(seconds: 1), () {
-      setState(() {
-        _isRefreshingLinkedIn = false;
-      });
-      
       ToastUtils.showSuccessToast('LinkedIn connection refreshed');
     });
   }
-  
 
-  
   void _clearCache() {
-    // Simulate clearing cache
-    setState(() {
-      _isClearingCache = true;
-    });
-    
     // Simulate operation
     Future.delayed(const Duration(seconds: 1), () {
-      setState(() {
-        _isClearingCache = false;
-      });
-      
       ToastUtils.showSuccessToast('Cache cleared successfully');
     });
   }
-  
-  void _initiateAccountDeletion() {
-    // Show confirmation dialog
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Account'),
-        content: const Text('Are you sure you want to delete your account? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _deleteAccount();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
-  
+
   void _deleteAccount() {
-    // Simulate account deletion
-    setState(() {
-      _isDeletingAccount = true;
-    });
-    
     // Simulate deletion process
     Future.delayed(const Duration(seconds: 1), () {
-      setState(() {
-        _isDeletingAccount = false;
-      });
-      
       ToastUtils.showInfoToast('Account deletion initiated');
-      
       // In a real app, this would log the user out and redirect to login screen
     });
   }
-  
+
   void _reconnectLinkedIn() {
-    // Simulate reconnection
-    setState(() {
-      _isReconnectingLinkedIn = true;
-    });
-    
     // Simulate network request
     Future.delayed(const Duration(seconds: 1), () {
-      setState(() {
-        _isReconnectingLinkedIn = false;
-      });
-      
       ToastUtils.showSuccessToast('LinkedIn account reconnected');
     });
   }
-  
+
   void _updateLinkedInAccount() {
-    // Simulate update
-    setState(() {
-      _isUpdatingLinkedIn = true;
-    });
-    
     // Simulate network request
     Future.delayed(const Duration(seconds: 1), () {
-      setState(() {
-        _isUpdatingLinkedIn = false;
-      });
-      
       ToastUtils.showSuccessToast('LinkedIn account updated');
     });
   }
@@ -887,4 +805,4 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context.go(AppConstants.homeRoute);
     }
   }
-} 
+}

@@ -6,6 +6,76 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Service to communicate with the einsteini backend API
 class ApiService {
+  /// Create a new LinkedIn post using backend
+  Future<String> createPost({
+    required String topic,
+    required String tone,
+    required String length,
+  }) async {
+    final response = await http.post(
+      Uri.parse(_getEndpointUrl('/api/create-post')),
+      headers: _headers,
+      body: jsonEncode({
+        'postTopic': topic,
+        'contentTone': tone,
+        'postLength': length,
+      }),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['post'] ?? 'Error: No post generated.';
+    } else {
+      return 'Error: Failed to generate post.';
+    }
+  }
+
+  /// Create a LinkedIn repost using backend
+  Future<String> createRepost({
+    required String url,
+    required String tone,
+    required String length,
+  }) async {
+    final response = await http.post(
+      Uri.parse(_getEndpointUrl('/api/create-repost')),
+      headers: _headers,
+      body: jsonEncode({
+        'postUrl': url,
+        'contentTone': tone,
+        'postLength': length,
+      }),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['repost'] ?? 'Error: No repost generated.';
+    } else {
+      return 'Error: Failed to generate repost.';
+    }
+  }
+
+  /// Generate LinkedIn About Me using backend
+  Future<String> createAboutMe({
+    required String industry,
+    required String experience,
+    required String skills,
+    required String goal,
+  }) async {
+    final response = await http.post(
+      Uri.parse(_getEndpointUrl('/api/create-about-me')),
+      headers: _headers,
+      body: jsonEncode({
+        'industry': industry,
+        'experience': experience,
+        'skills': skills,
+        'goal': goal,
+      }),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['aboutMe'] ?? 'Error: No About Me generated.';
+    } else {
+      return 'Error: Failed to generate About Me.';
+    }
+  }
   static const String _baseUrl = 'https://backend.einsteini.ai/api';
   
   // Static variable to easily change API URL format if needed

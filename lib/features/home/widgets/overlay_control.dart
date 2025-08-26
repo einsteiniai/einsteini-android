@@ -49,7 +49,7 @@ class OverlayControlState extends State<OverlayControl> {
           message: 'To show the floating overlay, please grant the "Display over other apps" permission.',
           actionText: 'Open Settings',
           onActionPressed: () {
-            PermissionUtils.openOverlaySettings();
+            PermissionUtils.openOverlaySettings(context);
           },
         );
       }
@@ -134,4 +134,4 @@ class OverlayControlState extends State<OverlayControl> {
       ],
     );
   }
-} 
+}

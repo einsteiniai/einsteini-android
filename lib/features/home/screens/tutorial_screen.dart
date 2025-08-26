@@ -186,9 +186,9 @@ class _TutorialScreenState extends State<TutorialScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Check if this is a new user
-    final routerState = GoRouterState.of(context);
-    final isNewUser = routerState.location.contains('isNewUser=true');
+  // Check if this is a new user
+  final routerState = GoRouterState.of(context);
+  final isNewUser = routerState.uri.toString().contains('isNewUser=true');
     
     return Scaffold(
       appBar: AppBar(

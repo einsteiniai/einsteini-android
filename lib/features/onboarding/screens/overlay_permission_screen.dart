@@ -87,37 +87,24 @@ class _OverlayPermissionScreenState extends State<OverlayPermissionScreen> {
   }
 
   void _requestPermission() async {
-    // Show loading indicator
     setState(() {
       _isChecking = true;
     });
-    
     try {
-      // Open settings
-      await PlatformChannel.openOverlayPermissionSettings();
-      
-      // Short delay to ensure settings screen has time to open
-      await Future.delayed(const Duration(milliseconds: 500));
-      
-      // Show instruction dialog to help users navigate to the correct settings
-      if (mounted) {
-        PermissionUtils.showOverlayPermissionInstructions(context);
-      }
-      
+      // Use new method to launch OverlayPermissionActivity for all Android devices
+      await PermissionUtils.openOverlaySettings(context);
+      // Permission checking will continue with the timer
     } catch (e) {
       print('Error requesting permission: $e');
-      // If opening settings failed, show the instructions dialog
       if (mounted) {
         PermissionUtils.showOverlayPermissionInstructions(context);
       }
     } finally {
-      // Always reset the checking state
       if (mounted) {
         setState(() {
           _isChecking = false;
         });
       }
-      // Permission checking will continue with the timer
     }
   }
 
@@ -335,4 +322,4 @@ class _OverlayPermissionScreenState extends State<OverlayPermissionScreen> {
       ],
     );
   }
-} 
+}

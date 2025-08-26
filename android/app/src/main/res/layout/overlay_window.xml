@@ -502,5 +502,7 @@
                 </LinearLayout>
             </FrameLayout>
         </androidx.core.widget.NestedScrollView>
+
+    <!-- Loading indicator removed as requested -->
     </LinearLayout>
 </FrameLayout>

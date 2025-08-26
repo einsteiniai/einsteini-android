@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   static const Color _primaryColor = Color(0xFFBD79FF);
@@ -15,8 +14,6 @@ class AppTheme {
   static const Color _darkTextColor = Colors.white;
   static const Color _darkSecondaryTextColor = Color(0xFFB4B7BD);
   
-  static const _errorColor = Color(0xFFFF3B30);
-  static const _successColor = Color(0xFF34C759);
   
   // Font families
   static const String _primaryFontFamily = 'TikTokSans';
@@ -154,7 +151,7 @@ class AppTheme {
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     ),
-    cardTheme: CardTheme(
+  cardTheme: CardThemeData(
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -310,7 +307,7 @@ class AppTheme {
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     ),
-    cardTheme: CardTheme(
+  cardTheme: CardThemeData(
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),

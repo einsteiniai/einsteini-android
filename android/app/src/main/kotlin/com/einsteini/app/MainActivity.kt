@@ -172,6 +172,27 @@ class MainActivity : FlutterActivity() {
         // Set the method channel in the overlay service
         Log.d("MainActivity", "Setting method channel in overlay service: $overlayChannel")
         EinsteiniOverlayService.setMethodChannel(overlayChannel)
+        
+        // Set up the platform channel for additional methods
+        val platformChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "einsteini/platform")
+        platformChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "openOverlayPermissionActivity" -> {
+                    val intent = Intent(this, OverlayPermissionActivity::class.java)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(intent)
+                    result.success(true)
+                }
+                "shareToLinkedIn" -> {
+                    val content = call.argument<String>("content") ?: ""
+                    shareToLinkedIn(content)
+                    result.success(true)
+                }
+                else -> {
+                    result.notImplemented()
+                }
+            }
+        }
     }
 
     private fun setupMethodChannel(flutterEngine: FlutterEngine) {
@@ -429,6 +450,21 @@ class MainActivity : FlutterActivity() {
             Log.d("MainActivity", "No LinkedIn URL found in shared text")
             Toast.makeText(this, "No LinkedIn URL found in shared content", Toast.LENGTH_SHORT).show()
             finish()
+        }
+    }
+
+    private fun shareToLinkedIn(content: String) {
+        val intent = Intent(Intent.ACTION_SEND)
+        intent.type = "text/plain"
+        intent.setPackage("com.linkedin.android")
+        intent.putExtra(Intent.EXTRA_TEXT, content)
+        try {
+            startActivity(intent)
+        } catch (e: Exception) {
+            // Fallback: open LinkedIn web post creation
+            val webIntent = Intent(Intent.ACTION_VIEW)
+            webIntent.data = Uri.parse("https://www.linkedin.com/feed/?shareActive=true")
+            startActivity(webIntent)
         }
     }
 }

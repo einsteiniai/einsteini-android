@@ -352,7 +352,7 @@ class LinkedInOverlayControlsState extends State<LinkedInOverlayControls> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           DropdownButtonFormField<String>(
-            value: _selectedLanguage,
+            initialValue: _selectedLanguage,
             decoration: const InputDecoration(
               labelText: 'Target Language',
               border: OutlineInputBorder(),

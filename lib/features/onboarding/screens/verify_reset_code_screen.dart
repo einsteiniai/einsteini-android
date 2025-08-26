@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:einsteiniapp/core/services/api_service.dart';
 import 'package:einsteiniapp/core/utils/toast_utils.dart';
 import 'package:go_router/go_router.dart';
-import 'package:einsteiniapp/core/routes/app_router.dart' as router;
 import 'package:flutter_animate/flutter_animate.dart';
 
 class VerifyResetCodeScreen extends StatefulWidget {

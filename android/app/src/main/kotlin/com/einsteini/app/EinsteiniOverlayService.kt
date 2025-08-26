@@ -1096,7 +1096,7 @@ class EinsteiniOverlayService : Service() {
                 .trim()
             
             if (cleanedContent.length > 300) {
-                cleanedContent = cleanedContent.substring(0, 300) + "..."
+                cleanedContent = cleanedContent.substring(0, 300) + "...";
             }
             
             // Create personalized prompt
@@ -1184,7 +1184,7 @@ class EinsteiniOverlayService : Service() {
             val author = scrapedData["author"] as? String ?: ""
             
             // Map the UI summary type to the API expected format (match Flutter implementation)
-            val apiSummaryType = when (summaryType.toLowerCase()) {
+            val apiSummaryType = when (summaryType.lowercase()) {
                 "brief" -> "brief"
                 "detailed" -> "detailed"
                 "concise" -> "concise"
@@ -1679,7 +1679,7 @@ class EinsteiniOverlayService : Service() {
             val child = contentView.getChildAt(i)
             if (child is LinearLayout) {
                 // This is a content block 
-                child.setBackgroundColor(Color.parseColor(if (isDark) "#1A1F2E" else "#F5F5F5"))
+                child.setBackgroundColor(Color.parseColor(if (isDark) "#1F1F1F" else "#FFFFFF"))
                 
                 // Update text colors within this block
                 for (j in 0 until child.childCount) {
@@ -1707,7 +1707,7 @@ class EinsteiniOverlayService : Service() {
             val child = contentView.getChildAt(i)
             if (child is LinearLayout) {
                 // This is a content block 
-                child.setBackgroundColor(Color.parseColor(if (isDark) "#1A1F2E" else "#F5F5F5"))
+                child.setBackgroundColor(Color.parseColor(if (isDark) "#1F1F2E" else "#F5F5F5"))
                 
                 // Update text colors within this block
                 for (j in 0 until child.childCount) {
@@ -1848,7 +1848,7 @@ class EinsteiniOverlayService : Service() {
                 
                 overlayView.visibility = View.VISIBLE
                 isOverlayVisible = true
-                
+                // Loading indicator removed
                 // Keep the bubble visible even when overlay is shown
                 if (::bubbleView.isInitialized) {
                     bubbleView.visibility = View.VISIBLE
@@ -1926,6 +1926,7 @@ class EinsteiniOverlayService : Service() {
             Log.e("EinsteiniOverlay", "Error hiding overlay", e)
             
             // Try direct approach as fallback
+
             try {
                 if (::overlayView.isInitialized && overlayView.isAttachedToWindow) {
                     windowManager.removeView(overlayView)
@@ -2131,6 +2132,14 @@ class EinsteiniOverlayService : Service() {
     private fun showCloseButton() {
         try {
             if (::closeButtonView.isInitialized) {
+                // If the closeButtonView is not attached to window, re-add it
+                if (closeButtonView.parent == null) {
+                    try {
+                        windowManager.addView(closeButtonView, closeButtonParams)
+                    } catch (e: Exception) {
+                        Log.e("EinsteiniOverlay", "Error re-adding close button view", e)
+                    }
+                }
                 closeButtonView.visibility = View.VISIBLE
                 animateCloseButtonAlpha(0.5f)
             }
@@ -2457,7 +2466,7 @@ class EinsteiniOverlayService : Service() {
                 Handler(Looper.getMainLooper()).post {
                     try {
                         updateOverlayWithScrapedData(scrapedData)
-                        
+                        // Loading indicator removed
                         // Send the scraped content to Flutter
                         sendScrapedContentToFlutter(scrapedData)
                     } catch (e: Exception) {
@@ -2471,6 +2480,7 @@ class EinsteiniOverlayService : Service() {
                 Handler(Looper.getMainLooper()).post {
                     try {
                         showErrorInOverlay("Failed to process LinkedIn content: ${e.message}")
+                        // Loading indicator removed
                     } catch (e: Exception) {
                         Log.e("EinsteiniOverlay", "Error showing error in overlay", e)
                     }
@@ -2507,8 +2517,9 @@ class EinsteiniOverlayService : Service() {
             connection.requestMethod = "GET"
             connection.setRequestProperty("Content-Type", "application/json")
             connection.setRequestProperty("Cache-Control", "no-cache")
-            connection.connectTimeout = 15000
-            connection.readTimeout = 15000
+            // Reduce timeouts for faster failure
+            connection.connectTimeout = 4000
+            connection.readTimeout = 4000
             
             // Get the response
             val responseCode = connection.responseCode
