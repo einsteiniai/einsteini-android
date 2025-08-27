@@ -41,8 +41,8 @@ android {
         applicationId = "com.einsteini.app"
         minSdkVersion flutter.minSdkVersion // Ensure compatibility
         targetSdk = 36 // Updated to target API level 36 for Play Store requirement
-    versionCode = 22
-    versionName = "3.0.0"
+        versionCode = 23
+        versionName = "3.0.0"
         
         // Add this for flutter_appauth
         manifestPlaceholders += [

@@ -15,7 +15,7 @@
 ---
 ## 🆕 Current Version
 
-**Version:** 3.0.0+22
+**Version:** 3.0.0+23
 
 ## � Release Notes
 

@@ -85,11 +85,11 @@ The app uses a signing key stored in `android/einsteini-keystore.jks`.
 
 ### 2. Version Management
 
-Current version in `pubspec.yaml`: `3.0.0+22`
+Current version in `pubspec.yaml`: `3.0.0+23`
 
 **Version Format**: `MAJOR.MINOR.PATCH+BUILD_NUMBER`
 - **3.0.0**: User-visible version (versionName)
-- **22**: Internal build number (versionCode) - must increment with each release
+- **23**: Internal build number (versionCode) - must increment with each release
 
 ---
 
@@ -425,7 +425,7 @@ Data Security:
 ### 3. Release Notes Template
 
 ```markdown
-🚀 What's New in Einsteini v3.0.0
+🚀 What's New in Einsteini v3.0.0+23
 
 ✨ NEW FEATURES
 • Direct LinkedIn post sharing from AI-generated content
